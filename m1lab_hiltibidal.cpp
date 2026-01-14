@@ -3,12 +3,10 @@
 //Connor Hiltibidal 
 //1/14/26
 /*
-
 were selling food - you decide what you wanna sell
 tell me how much you have
 how much each costs
 and what your total would be.
-
 if we have time we'll make it more interactive
 */
 #include <iostream>
@@ -34,7 +32,6 @@ cin >> purchased;
 total_price = purchased * price_each;
 
 cout << "Total price is $" << total_price << endl;
-
 
 return 0; 
 }
