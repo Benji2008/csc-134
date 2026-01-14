@@ -15,19 +15,23 @@ if we have time we'll make it more interactive
 using namespace std;
 
 int main() {
-    //declare variables at the top easier to read
     string item = "VBucks";
     int item_count = 100;
-double price_each = 0.80;
+    int purchased;
+double price_each = 5.00;
 double total_price;
 
 cout << "welcome to our " << item << " store. " << endl;
 cout << "we have" << item_count << " " << item << "," << endl;
 cout << "they cost $" << price_each << " each. " << endl; 
 
-total_price = item_count * price_each;
+cout << "how many would you like to purchase?" ;
+cin >> purchased;
+
+total_price = purchased * price_each;
 
 cout << "Total price is $" << total_price << endl;
+
 
 return 0; 
 }
