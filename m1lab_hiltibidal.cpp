@@ -12,14 +12,17 @@ and what your total would be.
 if we have time we'll make it more interactive
 */
 #include <iostream>
+#include <iomanip>
 using namespace std;
 
 int main() {
     string item = "VBucks";
     int item_count = 100;
     int purchased;
-double price_each = 5.00;
+double price_each = 5.06;
 double total_price;
+
+cout << setprecision(2) << fixed;
 
 cout << "welcome to our " << item << " store. " << endl;
 cout << "we have" << item_count << " " << item << "," << endl;
