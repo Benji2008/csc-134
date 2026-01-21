@@ -24,7 +24,7 @@ double total_price;
 //part 1 set up the store
 cout << " Welcome to the store setup program. " << endl;
 cout << "Name of item? ";
-cin >> item_name; 
+getline(cin, item_name); //let us use spaces?
 cout << "number of items? ";
 cin >> item_count;
 cout << "price each? ";
