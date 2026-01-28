@@ -14,9 +14,11 @@ int main() {
     string meal_name = "Krabby patty";
     double meal_price = 6.99;
     int     meal_count;
+    
     //receipt
     double subtotal, tip, tax_amount, total; //all $
     const double TAX_RATE = 0.07; // 7%
+
     //take order 
     cout << "welcome to the restaurant" << endl;
     cout << "how many " << meal_name << " would you like?" << endl;
@@ -24,15 +26,19 @@ int main() {
     cout << "Preparing your order..." << endl; 
 
     // calculate the subtotal and totalp
-    subtotal = meal_price * meal_count;
+    subtotal = meal_price * meal_count; // before taxes and tip
+    tax_amount = subtotal * TAX_RATE; // $ in taxes
+    total = subtotal + tax_amount;
 
     //print the receipt
+    cout << setprecision(2) << fixed; // for decimals 2
     cout << "-----------------------" << endl;
     cout << meal_name << " x " << meal_count    << endl;
     cout << "SUBTOTAL:\t\t$" << subtotal    << endl;
     cout << "tax\t\t\t$" << tax_amount << endl;
     cout << "-----------------" << endl;
-    cout << "THANK YOU VOME AGAIN!" << endl << endl;
+    cout << "Total:\t\t\t$"     << total    << endl;
+    cout << "THANK YOU COME AGAIN!" << endl << endl;
     return 0;
 
 }
