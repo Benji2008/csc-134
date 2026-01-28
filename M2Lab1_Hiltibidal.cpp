@@ -39,6 +39,5 @@ int main () {
     cout << "\n---- CRATE INFO ----\n";
     cout << "Volume " << volume << " cubic feet." << endl;
 
-
     return 0; 
 }
