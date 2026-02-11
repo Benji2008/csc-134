@@ -33,15 +33,16 @@ int main(){
     cout << "Rectangle 1 is area: " << area1 << endl;
     cout << "Rectangle 2 is area: " << area2 << endl;
 
-// finally compare the two
-if (area1 > area2){
-    cout << "The first rectangle is largest." << endl;
-}
-if (area1 < area2){
-    cout << "The second rectangle is largest." << endl;
-}
-if (area1 == area2){
-    cout << "Both are the same size." << endl; 
-}
-return 0;
+    // finally compare the two
+    if (area1 > area2){
+        cout << "The first rectangle is largest." << endl;
+    }
+    else if (area1 < area2){
+        cout << "The second rectangle is largest." << endl;
+    }
+    else if (area1 == area2){
+        cout << "Both are the same size." << endl; 
+    }
+    
+    return 0;
 }
