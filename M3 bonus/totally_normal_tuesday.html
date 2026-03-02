@@ -1,0 +1,2018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOTALLY NORMAL TUESDAY</title>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Fredoka+One&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sky: #7EC8E3;
+  --ground: #5C8A2E;
+  --road: #6B7280;
+  --yellow: #FFF176;
+  --red: #E63946;
+  --blue: #1D3557;
+  --green: #2D6A4F;
+  --orange: #F4831F;
+  --outline: 3px solid #111;
+  --outline4: 4px solid #111;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #1a1a2e;
+  font-family: 'Fredoka One', cursive;
+  overflow: hidden;
+  height: 100vh; width: 100vw;
+}
+#game { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+
+/* ── SCREENS ── */
+.screen { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; }
+.screen.active { display: flex; }
+
+/* ── START ── */
+#startScreen {
+  background: linear-gradient(180deg, #0a0a1a 0%, #1a1a3e 50%, #2d1b00 100%);
+}
+.title-wrap { text-align: center; margin-bottom: 6px; }
+.title-main {
+  font-family: 'Bangers', cursive;
+  font-size: clamp(44px, 10vw, 96px);
+  letter-spacing: 5px;
+  color: #FFE500;
+  text-shadow: 5px 5px 0 #E63946, 9px 9px 0 #111;
+  animation: titlePop 1.8s ease-in-out infinite;
+  line-height: 0.9;
+}
+@keyframes titlePop { 0%,100%{transform:scale(1) rotate(-1deg)} 50%{transform:scale(1.04) rotate(1deg)} }
+.title-sub { font-size: clamp(13px,2.5vw,19px); color: #aaa; letter-spacing: 3px; margin-top: 6px; }
+
+.start-scene {
+  display: flex; gap: 14px; align-items: flex-end; justify-content: center;
+  margin: 10px 0;
+  padding: 0 10px;
+}
+.start-char-wrap { display: flex; flex-direction: column; align-items: center; }
+.sc-label { font-size: 11px; color: #888; letter-spacing: 1px; margin-top: 4px; font-family: 'Fredoka One', cursive; }
+
+.btn-start {
+  font-family: 'Bangers', cursive;
+  font-size: clamp(22px, 4vw, 36px);
+  letter-spacing: 3px;
+  padding: 12px 44px;
+  background: var(--red);
+  color: #fff;
+  border: 4px solid #111;
+  border-radius: 10px;
+  box-shadow: 5px 5px 0 #111;
+  cursor: pointer;
+  transition: transform .1s, box-shadow .1s;
+  animation: btnPulse 1.2s ease-in-out infinite;
+}
+@keyframes btnPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+.btn-start:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 #111; animation: none; }
+.btn-start:active { transform: translate(3px,3px); box-shadow: 2px 2px 0 #111; }
+.btn-sound {
+  font-family: 'Bangers', cursive;
+  font-size: 18px;
+  padding: 7px 22px;
+  background: #333;
+  color: #FFE500;
+  border: 3px solid #555;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 8px;
+  letter-spacing: 1px;
+}
+.credits { font-size: 11px; color: #555; margin-top: 8px; font-family: monospace; }
+
+/* ── SCENE STRUCTURE ── */
+.game-scene {
+  width: 100%;
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+.ui-panel {
+  background: #fff;
+  border: 4px solid #111;
+  border-radius: 12px;
+  padding: 14px 20px;
+  max-width: 660px;
+  width: 92%;
+  box-shadow: 6px 6px 0 #111;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 20;
+  animation: panelSlide .4s ease-out both;
+}
+@keyframes panelSlide { from{transform:translateY(60px);opacity:0} to{transform:translateY(0);opacity:1} }
+.story-txt { font-size: clamp(13px,2.2vw,17px); line-height: 1.5; color: #111; margin-bottom: 12px; }
+.story-txt strong { color: var(--red); }
+.choices { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.btn-choice {
+  font-family: 'Bangers', cursive;
+  font-size: clamp(15px,2.6vw,21px);
+  letter-spacing: 1px;
+  padding: 9px 18px;
+  border: 4px solid #111;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 #111;
+  transition: transform .1s, box-shadow .1s, background .15s;
+  flex: 1; min-width: 140px; max-width: 280px;
+  color: #fff;
+  background: #2C3A4F;
+  position: relative;
+  overflow: hidden;
+}
+.btn-choice::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0);
+  transition: background .15s;
+}
+.btn-choice:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 #111; background: #3D5068; }
+.btn-choice:hover::after { background: rgba(255,255,255,.06); }
+.btn-choice:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 #111; }
+/* kill old color classes — all same now */
+.bc-green,.bc-red,.bc-orange,.bc-purple,.bc-blue { background: #2C3A4F; }
+
+/* ── CHAPTER BADGE ── */
+.badge {
+  position: absolute; top: 10px; left: 12px;
+  background: var(--orange); color: #fff;
+  font-family: 'Bangers', cursive;
+  font-size: 16px; letter-spacing: 1px;
+  padding: 3px 12px;
+  border: 3px solid #111; border-radius: 6px;
+  box-shadow: 3px 3px 0 #111; z-index: 30;
+}
+.hearts { position: absolute; top: 8px; right: 12px; display: flex; gap: 5px; z-index: 30; }
+.heart-svg { width: 24px; height: 24px; filter: drop-shadow(2px 2px 0 #111); }
+
+/* ── CUTSCENE SCREEN ── */
+#cutscene {
+  z-index: 50;
+  background: #000;
+  overflow: hidden;
+}
+.cs-bg {
+  position: absolute; inset: 0;
+  transition: background 0.3s;
+}
+.cs-stage { position: absolute; inset: 0; }
+.cs-label {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,.7); color: #FFE500;
+  font-family: 'Bangers', cursive;
+  font-size: 20px; letter-spacing: 3px;
+  padding: 4px 18px; border-radius: 20px;
+  border: 2px solid #FFE500;
+  z-index: 60;
+}
+.cs-caption {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,.8); color: #fff;
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(13px,2.5vw,18px);
+  padding: 8px 20px; border-radius: 8px;
+  max-width: 90%; text-align: center;
+  z-index: 60; opacity: 0;
+  transition: opacity .3s;
+}
+.cs-caption.show { opacity: 1; }
+.effect-bang {
+  position: absolute;
+  font-family: 'Bangers', cursive;
+  font-size: 48px;
+  color: #FFE500;
+  text-shadow: 3px 3px 0 #111;
+  z-index: 55;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+.effect-bang.pop {
+  opacity: 1;
+  animation: bangPop .4s ease-out both;
+}
+@keyframes bangPop { 0%{transform:scale(0) rotate(-15deg)} 60%{transform:scale(1.3) rotate(5deg)} 100%{transform:scale(1) rotate(0)} }
+
+/* ── DEATH SCREEN ── */
+#deathScreen {
+  z-index: 40;
+  background: radial-gradient(ellipse at 50% 40%, #4a0000 0%, #1a0000 100%);
+}
+.death-inner { text-align: center; padding: 20px; animation: panelSlide .4s ease-out; }
+.death-title { font-family: 'Bangers', cursive; font-size: clamp(52px,11vw,100px); color: var(--red); text-shadow: 4px 4px 0 #111; animation: deathShake .3s ease-in-out infinite; }
+@keyframes deathShake { 0%,100%{transform:rotate(-2deg)} 50%{transform:rotate(2deg)} }
+.death-icon-wrap { margin: 8px 0; height: 100px; display: flex; align-items: center; justify-content: center; }
+.death-box { background: rgba(255,255,255,.08); border: 2px solid #E63946; border-radius: 10px; padding: 12px 22px; max-width: 480px; margin: 0 auto; color: #eee; font-size: clamp(13px,2.2vw,17px); line-height: 1.6; }
+.death-box em { color: #FFE500; font-style: normal; }
+.death-box strong { color: #E63946; }
+.btn-retry { font-family:'Bangers',cursive; font-size:24px; letter-spacing:2px; padding:10px 36px; background:#F4831F; color:#fff; border:4px solid #111; border-radius:10px; box-shadow:4px 4px 0 #111; cursor:pointer; margin-top:14px; transition:transform .1s,box-shadow .1s; }
+.btn-retry:hover { transform:translate(-2px,-2px); box-shadow:6px 6px 0 #111; }
+
+/* ── WIN SCREEN ── */
+#winScreen {
+  z-index: 40;
+  background: radial-gradient(ellipse at 50% 40%, #0a1628 0%, #000 100%);
+}
+.win-inner { text-align: center; padding: 20px; animation: panelSlide .4s ease-out; }
+.win-title { font-family: 'Bangers', cursive; font-size: clamp(48px,10vw,92px); color: #FFE500; text-shadow: 4px 4px 0 #F4831F, 7px 7px 0 #111; animation: winDance .5s ease-in-out infinite; }
+@keyframes winDance { 0%,100%{transform:rotate(-3deg) scale(1)} 50%{transform:rotate(3deg) scale(1.05)} }
+.win-box { background: rgba(255,229,0,.12); border: 2px solid #FFE500; border-radius: 10px; padding: 14px 22px; max-width: 500px; margin: 10px auto; color: #eee; font-size: clamp(13px,2.2vw,17px); line-height: 1.6; }
+.win-box strong { color: #FFE500; }
+.confetti-cont { position: fixed; inset: 0; pointer-events: none; z-index: 45; }
+.conf { position: absolute; width: 10px; height: 10px; border-radius: 2px; animation: confFall linear both; }
+@keyframes confFall { from{transform:translateY(-30px) rotate(0)} to{transform:translateY(110vh) rotate(600deg)} }
+
+/* ── SCENE BACKGROUNDS ── */
+.bg-street { background: linear-gradient(180deg, #7EC8E3 0%, #7EC8E3 55%, #5C8A2E 55%, #5C8A2E 72%, #6B7280 72%, #6B7280 100%); }
+.bg-street2 { background: linear-gradient(180deg, #87CEEB 0%, #87CEEB 50%, #5C8A2E 50%, #5C8A2E 68%, #6B7280 68%); }
+.bg-schoolyard { background: linear-gradient(180deg, #A8D8EA 0%, #A8D8EA 50%, #5C8A2E 50%, #5C8A2E 72%, #8B7355 72%); }
+.bg-classroom { background: linear-gradient(180deg, #F5F0E8 0%, #F5F0E8 75%, #8B7355 75%); }
+.bg-cafeteria { background: linear-gradient(180deg, #F0EAD6 0%, #F0EAD6 75%, #9E8777 75%); }
+.bg-space { background: radial-gradient(ellipse, #0a0a2a 0%, #000 100%); }
+.bg-death-street { background: linear-gradient(180deg, #8B0000 0%, #3a0000 60%, #1a0000 100%); }
+
+/* ── FIXED SCENE DECORATIONS ── */
+.ground-strip { position: absolute; bottom: 0; left: 0; width: 100%; }
+.road-strip { position: absolute; bottom: 0; left: 0; width: 100%; height: 28%; background: #6B7280; }
+.road-strip::before { content:''; position:absolute; top:50%; left:0; right:0; height:6px; background:repeating-linear-gradient(90deg, #FFE500 0,#FFE500 40px, transparent 40px, transparent 80px); transform:translateY(-50%); }
+.grass-strip { position: absolute; width: 100%; height: 22%; bottom: 28%; background: #5C8A2E; border-top: 3px solid #3d6120; }
+.floor-tile { position: absolute; bottom: 0; width: 100%; height: 25%; background: repeating-linear-gradient(90deg, #C8B99A 0, #C8B99A 60px, #B8A990 60px, #B8A990 120px); }
+
+/* ── CHARACTER CONTAINERS (for transform animation) ── */
+.char-cont {
+  position: absolute;
+  display: flex; flex-direction: column; align-items: center;
+  transition: none;
+}
+
+/* ── SPEECH BUBBLE ── */
+.bubble {
+  position: absolute;
+  background: #fff;
+  border: 3px solid #111;
+  border-radius: 14px;
+  padding: 5px 11px;
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(11px,1.8vw,14px);
+  box-shadow: 3px 3px 0 #111;
+  white-space: nowrap;
+  z-index: 25;
+  animation: bubbleBob .8s ease-in-out infinite alternate;
+}
+@keyframes bubbleBob { from{transform:translateY(0)} to{transform:translateY(-5px)} }
+.bubble::after { content:''; position:absolute; bottom:-13px; left:16px; border:7px solid transparent; border-top-color:#111; }
+.bubble::before { content:''; position:absolute; bottom:-9px; left:18px; border:5px solid transparent; border-top-color:#fff; z-index:1; }
+
+/* ── SCHOOL BUILDING CSS ART ── */
+.school-bld {
+  position: absolute;
+  bottom: 28%;
+  right: 0;
+  width: 230px;
+  height: 140px;
+  background: #E8C4B8;
+  border: 4px solid #111;
+  border-bottom: none;
+}
+.school-bld::before { content:'SCHOOL'; position:absolute; top:-28px; left:50%; transform:translateX(-50%); font-family:'Bangers',cursive; font-size:18px; color:#111; letter-spacing:2px; white-space:nowrap; }
+.school-win { position:absolute; width:38px; height:38px; background:#81D4FA; border:3px solid #111; }
+.school-door { position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:46px; height:58px; background:#8B6239; border:3px solid #111; border-bottom:none; border-radius:4px 4px 0 0; }
+.school-door::after { content:'●'; position:absolute; right:6px; top:50%; color:#FFD700; font-size:10px; }
+
+/* ── VENDING MACHINE CSS ART ── */
+.vend {
+  position: absolute;
+  bottom: 28%;
+  width: 62px; height: 110px;
+  background: linear-gradient(180deg,#C62828,#B71C1C);
+  border: 4px solid #111;
+  border-radius: 6px 6px 3px 3px;
+  box-shadow: 5px 5px 0 #111;
+  z-index: 10;
+}
+.vend-screen { position:absolute; top:6px; left:7px; right:7px; height:55px; background:#1a2a1a; border:2px solid #333; border-radius:3px; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:3px; padding:3px; }
+.vend-item { background:#2a3a2a; border-radius:2px; display:flex; align-items:center; justify-content:center; font-size:13px; }
+.vend-slot { position:absolute; bottom:22px; left:10px; right:10px; height:10px; background:#111; border-radius:2px; }
+.vend-price { position:absolute; bottom:6px; left:0; right:0; text-align:center; font-family:'Bangers',cursive; font-size:11px; color:#FFD700; }
+
+/* ── CHALKBOARD ── */
+.chalkboard {
+  position: absolute;
+  top: 10px; left: 50%; transform: translateX(-50%);
+  width: clamp(220px,40%,300px); height: 95px;
+  background: #2E7D32;
+  border: 6px solid #5D4037;
+  border-radius: 4px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: rgba(255,255,255,.85);
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(14px,2.5vw,18px);
+  text-align: center;
+  z-index: 5;
+  box-shadow: 4px 4px 0 #3e2723;
+}
+.chalkboard small { font-size: 11px; opacity: .7; margin-top: 4px; }
+
+/* ── CAFETERIA TABLE ── */
+.caf-tbl { position:absolute; bottom:25%; width:110px; height:24px; background:#8B6239; border:3px solid #111; border-radius:3px; box-shadow:3px 3px 0 #5C3A1E; }
+
+/* ── SUN ── */
+.sun-art {
+  position: absolute;
+  top: 18px; right: 12%;
+  width: 58px; height: 58px;
+  background: #FFE500;
+  border-radius: 50%;
+  border: 3px solid #F4831F;
+  box-shadow: 0 0 20px rgba(255,229,0,.5);
+  animation: sunSpin 20s linear infinite;
+  z-index: 2;
+}
+.sun-art::before {
+  content: '';
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(#FFE500 0deg 20deg, transparent 20deg 40deg);
+  z-index: -1;
+}
+@keyframes sunSpin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+
+/* ── CLOUD CSS ── */
+.cloud-art {
+  position: absolute;
+  background: #fff;
+  border-radius: 50px;
+  box-shadow: 3px 3px 0 rgba(0,0,0,.15);
+  animation: cloudDrift 8s ease-in-out infinite;
+}
+.cloud-art::before,.cloud-art::after { content:''; position:absolute; background:#fff; border-radius:50%; }
+@keyframes cloudDrift { 0%,100%{transform:translateX(0)} 50%{transform:translateX(12px)} }
+
+/* ── STARS (space) ── */
+.star-d { position:absolute; background:#fff; border-radius:50%; animation:twink 1.5s infinite alternate; }
+@keyframes twink { from{opacity:.2;transform:scale(.8)} to{opacity:1;transform:scale(1.2)} }
+
+/* ── ANIMATIONS for cutscene characters ── */
+@keyframes charRun { 0%{transform:translateX(-160px)} 100%{transform:translateX(0)} }
+@keyframes charFlip { 0%{transform:translateY(0) rotate(0) scaleX(1)} 30%{transform:translateY(-80px) rotate(180deg) scaleX(1)} 60%{transform:translateY(-80px) rotate(360deg) scaleX(1)} 100%{transform:translateY(0) rotate(360deg) scaleX(1)} }
+@keyframes meteorCrash { 0%{transform:translate(120px,-180px) rotate(-30deg)} 70%{transform:translate(0,0) rotate(-30deg)} 85%{transform:translate(0,8px) rotate(-30deg)} 100%{transform:translate(0,0) rotate(-30deg)} }
+@keyframes meteorRoll { 0%{transform:rotate(-30deg)} 100%{transform:rotate(200deg) translateX(120px)} }
+@keyframes squish { 0%,80%{transform:scaleY(1) scaleX(1)} 85%{transform:scaleY(.2) scaleY(1.4)} 100%{transform:scaleY(.15) scaleX(1.5)} }
+@keyframes gooseBow { 0%,100%{transform:rotate(0)} 50%{transform:rotate(30deg) translateY(10px)} }
+@keyframes playerSit { 0%{transform:translateY(0)} 100%{transform:translateY(30px)} }
+@keyframes goosetornado { 0%{transform:rotate(0) translateX(0)} 100%{transform:rotate(1080deg) translateY(-200px)} }
+@keyframes coinInsert { 0%,60%{transform:translateX(0)} 30%{transform:translateX(30px)} 100%{transform:translateX(0)} }
+@keyframes machineRelax { 0%,100%{transform:rotate(0)} 30%,70%{transform:rotate(-3deg)} 50%{transform:rotate(3deg)} }
+@keyframes machineKick { 0%,100%{transform:rotate(0) translateX(0)} 50%{transform:rotate(45deg) translateX(60px) translateY(20px)} }
+@keyframes playerKick { 0%{transform:scaleX(1) translateX(0)} 50%{transform:scaleX(1) translateX(20px)} 100%{transform:scaleX(-1) translateX(-30px)} }
+@keyframes writeBoard { 0%{transform:translateX(0)} 50%{transform:translateX(40px) translateY(-20px)} 100%{transform:translateX(0)} }
+@keyframes dragonTransform { 0%{transform:scale(1.2) rotate(-5deg)} 50%{transform:scale(.6) rotate(15deg)} 100%{transform:scale(1) rotate(0)} }
+@keyframes playerLaunch { 0%{transform:translateY(0) rotate(0)} 100%{transform:translateY(-300px) rotate(720deg)} }
+@keyframes beamDown { 0%{transform:scaleY(0);opacity:0} 100%{transform:scaleY(1);opacity:.8} }
+@keyframes beamUp { 0%{transform:translateY(0)} 100%{transform:translateY(-280px) scale(.3)} }
+@keyframes lockerFly { 0%{transform:translate(0,0) rotate(0)} 100%{transform:translate(300px,-250px) rotate(720deg)} }
+@keyframes charWalk { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+@keyframes machineSlide { 0%{transform:translateX(0)} 100%{transform:translateX(120px)} }
+
+/* ── FLOATING ANIM for idle ── */
+.idle-float { animation: breathe 2.4s ease-in-out infinite; }
+.idle-shake { animation: deathShake 0.25s ease-in-out infinite; }
+@keyframes breathe { 0%,100%{transform:scaleY(1) translateY(0)} 45%{transform:scaleY(1.03) translateY(-3px)} 50%{transform:scaleY(0.97) translateY(1px)} }
+
+/* ── CLICKABLE CHARS ── */
+.clickable-char {
+  cursor: pointer;
+  transition: transform 0.1s;
+  user-select: none;
+}
+.clickable-char:hover { filter: brightness(1.15) drop-shadow(0 0 8px rgba(255,229,0,.6)); }
+.clickable-char:active { transform: scale(0.88) !important; }
+.char-poke { animation: charPoke 0.35s ease-out both !important; }
+@keyframes charPoke { 0%{transform:scale(1)} 30%{transform:scale(1.25) rotate(-8deg)} 60%{transform:scale(0.88) rotate(5deg)} 100%{transform:scale(1) rotate(0)} }
+.char-poke-spin { animation: charPokeSpin 0.5s ease-out both !important; }
+@keyframes charPokeSpin { 0%{transform:scale(1) rotate(0)} 40%{transform:scale(1.3) rotate(-20deg)} 100%{transform:scale(1) rotate(0)} }
+
+/* Tooltip for clickable chars */
+.click-hint {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,.8);
+  color: #FFE500;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-family: 'Fredoka One', cursive;
+}
+.clickable-char:hover .click-hint { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="game">
+
+<!-- =========== START SCREEN =========== -->
+<div id="startScreen" class="screen active">
+  <div class="title-wrap">
+    <div class="title-main">TOTALLY<br>NORMAL<br>TUESDAY</div>
+    <div class="title-sub">⚠️ A VERY DANGEROUS WALK TO SCHOOL ⚠️</div>
+  </div>
+  <div class="start-scene" id="startScene"></div>
+  <button class="btn-start" onclick="startGame()">▶ START GAME</button>
+  <button class="btn-sound" onclick="toggleMute()" id="soundBtn">🔊 SOUND: ON</button>
+  <div class="credits">by norrisa &nbsp;·&nbsp; M3LAB1 &nbsp;·&nbsp; 2/23/26 &nbsp;·&nbsp; 5 SCENES · 4 DEATHS · 1 WIN</div>
+</div>
+
+<!-- =========== CUTSCENE SCREEN =========== -->
+<div id="cutscene" class="screen">
+  <div class="cs-bg" id="csBg"></div>
+  <div class="cs-stage" id="csStage"></div>
+  <div class="cs-label" id="csLabel"></div>
+  <div class="cs-caption" id="csCaption"></div>
+</div>
+
+<!-- =========== SCENE 1: METEOR =========== -->
+<div id="scene1" class="screen bg-street">
+  <div class="game-scene">
+    <div class="sun-art"></div>
+    <div class="cloud-art" style="width:80px;height:30px;top:30px;left:18%">
+      <div style="width:50px;height:42px;background:#fff;border-radius:50%;position:absolute;top:-20px;left:8px;"></div>
+      <div style="width:34px;height:34px;background:#fff;border-radius:50%;position:absolute;top:-14px;right:4px;"></div>
+    </div>
+    <div class="cloud-art" style="width:60px;height:22px;top:55px;left:50%;opacity:.8">
+      <div style="width:38px;height:35px;background:#fff;border-radius:50%;position:absolute;top:-18px;left:5px;"></div>
+    </div>
+    <div class="badge">📍 SCENE 1 / 5</div>
+    <div class="hearts" id="hearts1"></div>
+    <div class="grass-strip"></div>
+    <div class="road-strip"></div>
+    <div class="school-bld">
+      <div class="school-win" style="top:25px;left:12px;"></div>
+      <div class="school-win" style="top:25px;right:12px;"></div>
+      <div class="school-door"></div>
+    </div>
+    <!-- Player -->
+    <div class="char-cont idle-float" id="s1boy" style="left:14%;bottom:28%"></div>
+    <!-- Meteor -->
+    <div class="char-cont" id="s1meteor" style="right:18%;bottom:28%;animation:idle-shake .3s ease-in-out infinite">
+      <div id="s1meteorInner"></div>
+    </div>
+    <div class="bubble" id="s1bubble" style="right:16%;bottom:58%">BIG ROCK!!! 💥</div>
+  </div>
+  <div class="ui-panel">
+    <div class="story-txt">
+      🚶 You're walking to school when a <strong>GIANT METEOR</strong> crashes right in front of you! It's massive. It smells like outer space and bad decisions.
+    </div>
+    <div class="choices">
+      <button class="btn-choice bc-red" onclick="choose(1,1)">📸 1. SELFIE WITH IT</button>
+      <button class="btn-choice bc-green" onclick="choose(1,2)">🦸 2. TRIPLE BACKFLIP OVER IT</button>
+    </div>
+  </div>
+</div>
+
+<!-- =========== SCENE 2: GEESE =========== -->
+<div id="scene2" class="screen bg-schoolyard">
+  <div class="game-scene">
+    <div class="sun-art"></div>
+    <div class="badge">📍 SCENE 2 / 5</div>
+    <div class="hearts" id="hearts2"></div>
+    <div class="grass-strip"></div>
+    <div class="road-strip"></div>
+    <div class="char-cont idle-float" id="s2boy" style="left:12%;bottom:28%"></div>
+    <!-- Geese trio -->
+    <div class="char-cont" id="s2g1" style="right:10%;bottom:28%;animation:gooseBow 1.2s ease-in-out infinite"></div>
+    <div class="char-cont" id="s2g2" style="right:20%;bottom:28%;animation:gooseBow 1.2s ease-in-out infinite;animation-delay:.3s"></div>
+    <div class="char-cont" id="s2g3" style="right:30%;bottom:28%;animation:gooseBow 1.2s ease-in-out infinite;animation-delay:.6s"></div>
+    <div class="bubble" style="right:8%;bottom:58%">HONK!! HONK!! 😤</div>
+    <div class="bubble" style="left:9%;bottom:56%;font-size:12px;">Did they just... bow??</div>
+  </div>
+  <div class="ui-panel">
+    <div class="story-txt">
+      ✅ You stuck the landing! A pigeon slow-claps in the background. <strong>But now — a PACK OF FURIOUS GEESE</strong> blocks the path to school. They are HONKING and they mean BUSINESS.
+    </div>
+    <div class="choices">
+      <button class="btn-choice bc-green" onclick="choose(2,1)">🕊️ 1. REASON WITH THEM CALMLY</button>
+      <button class="btn-choice bc-red" onclick="choose(2,2)">🏃 2. SPRINT THROUGH SCREAMING</button>
+    </div>
+  </div>
+</div>
+
+<!-- =========== SCENE 3: VENDING MACHINE =========== -->
+<div id="scene3" class="screen bg-schoolyard">
+  <div class="game-scene">
+    <div class="sun-art" style="top:18px;right:8%;"></div>
+    <div class="badge">📍 SCENE 3 / 5</div>
+    <div class="hearts" id="hearts3"></div>
+    <div class="grass-strip"></div>
+    <div class="school-bld" style="right:0;width:200px;">
+      <div class="school-win" style="top:25px;left:10px;"></div>
+      <div class="school-win" style="top:25px;right:10px;"></div>
+      <div class="school-door"></div>
+    </div>
+    <div class="char-cont idle-float" id="s3boy" style="left:12%;bottom:28%"></div>
+    <!-- Goose escort -->
+    <div class="char-cont" id="s3escort" style="left:6%;bottom:28%;transform:scaleX(-1)"></div>
+    <div class="bubble" style="left:4%;bottom:56%;font-size:11px;background:#d4edda">*honorable honk*</div>
+    <!-- Vending machine -->
+    <div class="vend idle-shake" id="s3vend" style="right:24%">
+      <div class="vend-screen">
+        <div class="vend-item">🍕</div><div class="vend-item">🥤</div>
+        <div class="vend-item">🍫</div><div class="vend-item">🍟</div>
+      </div>
+      <div class="vend-slot"></div>
+      <div class="vend-price">$1.75</div>
+    </div>
+    <div class="bubble" style="right:20%;bottom:70%">EXACT CHANGE!!😡</div>
+  </div>
+  <div class="ui-panel">
+    <div class="story-txt">
+      🪿 The lead goose <strong>BOWED</strong>. Your goose escort takes you to school... but a <strong>ROGUE VENDING MACHINE</strong> is blocking the door, shaking and demanding exact change!
+    </div>
+    <div class="choices">
+      <button class="btn-choice bc-red" onclick="choose(3,1)">👟 1. KICK IT REAL HARD</button>
+      <button class="btn-choice bc-green" onclick="choose(3,2)">🪙 2. PAY EXACT CHANGE ($1.75)</button>
+    </div>
+  </div>
+</div>
+
+<!-- =========== SCENE 4: DRAGON TEACHER =========== -->
+<div id="scene4" class="screen bg-classroom">
+  <div class="game-scene">
+    <div class="badge">📍 SCENE 4 / 5</div>
+    <div class="hearts" id="hearts4"></div>
+    <div class="floor-tile"></div>
+    <div class="chalkboard">
+      x² + 5x + 6 = 0
+      <small>SOLVE IT OR GET ROASTED 🔥</small>
+    </div>
+    <div class="char-cont idle-float" id="s4boy" style="left:12%;bottom:25%"></div>
+    <!-- Scared classmates -->
+    <div class="char-cont" id="s4s1" style="left:32%;bottom:25%;animation:deathShake .5s ease-in-out infinite"></div>
+    <div class="char-cont" id="s4s2" style="left:46%;bottom:25%;animation:deathShake .5s ease-in-out infinite;animation-delay:.2s"></div>
+    <div class="char-cont" id="s4s3" style="left:60%;bottom:25%;animation:deathShake .5s ease-in-out infinite;animation-delay:.4s"></div>
+    <!-- Dragon teacher -->
+    <div class="char-cont" id="s4dragon" style="right:6%;bottom:22%" ></div>
+    <div class="bubble" style="right:5%;bottom:72%">SOLVE IT NOW!! 🐲</div>
+  </div>
+  <div class="ui-panel">
+    <div class="story-txt">
+      🪙 The machine sighs, hands you free chips, and rolls aside. Inside school, <strong>Mr. Henderson has turned into a DRAGON</strong> and is demanding everyone solve a quadratic equation OR BE ROASTED.
+    </div>
+    <div class="choices">
+      <button class="btn-choice bc-blue" onclick="choose(4,1)">📐 1. SOLVE THE EQUATION</button>
+      <button class="btn-choice bc-orange" onclick="choose(4,2)">✨ 2. COMPLIMENT HIS SCALES</button>
+    </div>
+  </div>
+</div>
+
+<!-- =========== SCENE 5: ALIEN =========== -->
+<div id="scene5" class="screen bg-cafeteria">
+  <div class="game-scene">
+    <div class="badge">📍 SCENE 5 / 5</div>
+    <div class="hearts" id="hearts5"></div>
+    <div class="floor-tile"></div>
+    <div class="caf-tbl" style="left:8%"></div>
+    <div class="caf-tbl" style="left:36%"></div>
+    <div class="char-cont idle-float" id="s5boy" style="left:12%;bottom:25%"></div>
+    <!-- Panicking kids -->
+    <div class="char-cont" id="s5p1" style="left:30%;bottom:25%;animation:charRun .4s ease-in-out infinite"></div>
+    <!-- Alien with spaceship -->
+    <div class="char-cont" id="s5ship" style="right:8%;top:2%;animation:charWalk 1s ease-in-out infinite"></div>
+    <div class="char-cont" id="s5alien" style="right:10%;bottom:22%;animation:charWalk 1.2s ease-in-out infinite"></div>
+    <div class="bubble" style="right:8%;bottom:72%">YOU. COME. WITH. ME. 👉</div>
+  </div>
+  <div class="ui-panel">
+    <div class="story-txt">
+      📐 You wrote out the full solution. The dragon <strong>cried a single tear of pride</strong> and gave you an A+. <br>At lunch, a <strong>UFO LANDS IN THE CAFETERIA</strong>. The alien points directly at you.
+    </div>
+    <div class="choices">
+      <button class="btn-choice bc-red" onclick="choose(5,1)">🔒 1. HIDE IN YOUR LOCKER</button>
+      <button class="btn-choice bc-purple" onclick="choose(5,2)">🍟 2. ASK IF THEY HAVE SNACKS FIRST</button>
+    </div>
+  </div>
+</div>
+
+<!-- =========== DEATH SCREEN =========== -->
+<div id="deathScreen" class="screen">
+  <div class="death-inner">
+    <div class="death-title">YOU DIED 💀</div>
+    <div class="death-icon-wrap" id="deathIcon"></div>
+    <div class="death-box" id="deathMsg"></div>
+    <button class="btn-retry" onclick="restartGame()">🔄 TRY AGAIN</button>
+  </div>
+</div>
+
+<!-- =========== WIN SCREEN =========== -->
+<div id="winScreen" class="screen bg-space">
+  <div id="confCont" class="confetti-cont"></div>
+  <div id="winStars"></div>
+  <div class="win-inner">
+    <div class="win-title">🏆 YOU WIN! 🏆</div>
+    <div class="cs-stage" style="height:130px;position:relative;margin-bottom:10px;" id="winScene"></div>
+    <div class="win-box">
+      The alien blinks all six eyes. <em>"We have... Pringles."</em><br>
+      You're teleported aboard. <strong>THE WHOLE UNIVERSE HAS BEEN WAITING TO MEET YOU.</strong><br>
+      You are crowned <strong>GALACTIC SNACK AMBASSADOR</strong>. No homework. Ever again. 🎉
+    </div>
+    <button class="btn-retry" style="background:#2D6A4F;margin-top:12px" onclick="restartGame()">🔄 PLAY AGAIN</button>
+  </div>
+</div>
+
+</div><!-- #game -->
+
+<script>
+// ═══════════════════════════════════════════════════════
+// SVG CHARACTER LIBRARY
+// ═══════════════════════════════════════════════════════
+
+const S = {
+  // Little boy - w=50 h=90
+  boy: (scale=1, mood='normal') => {
+    const mouthPath = mood==='scared' ? 'M21 46 Q25 42 29 46' : mood==='happy' ? 'M21 46 Q25 51 29 46' : 'M22 46 Q25 49 28 46';
+    const eyeL = mood==='dead' ? 'M21 38 L24 41 M24 38 L21 41' : '<circle cx="22.5" cy="39" r="2.5" fill="#333"/>';
+    const eyeR = mood==='dead' ? 'M26 38 L29 41 M29 38 L26 41' : '<circle cx="27.5" cy="39" r="2.5" fill="#333"/>';
+    const eyeStroke = mood==='dead' ? `<line x1="21" y1="38" x2="24" y2="41" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="24" y1="38" x2="21" y2="41" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="26" y1="38" x2="29" y2="41" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="29" y1="38" x2="26" y2="41" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>` : '';
+    return `<svg width="${50*scale}" height="${90*scale}" viewBox="0 0 50 90">
+      <!-- shoes --><ellipse cx="18" cy="87" rx="11" ry="5" fill="#4a2800"/><ellipse cx="32" cy="87" rx="11" ry="5" fill="#4a2800"/>
+      <!-- legs --><rect x="13" y="60" width="10" height="28" fill="#1D3557" rx="3"/><rect x="27" y="60" width="10" height="28" fill="#1D3557" rx="3"/>
+      <!-- body --><rect x="11" y="35" width="28" height="28" fill="#E63946" rx="4"/>
+      <!-- shirt stripe --><rect x="11" y="46" width="28" height="4" fill="#c62836"/>
+      <!-- arms --><rect x="2" y="37" width="11" height="9" fill="#F4A261" rx="4"/><rect x="37" y="37" width="11" height="9" fill="#F4A261" rx="4"/>
+      <!-- neck --><rect x="22" y="28" width="6" height="9" fill="#F4A261"/>
+      <!-- head --><circle cx="25" cy="22" r="16" fill="#F4A261" stroke="#111" stroke-width="1.5"/>
+      <!-- hair --><path d="M10 16 Q25 0 40 16 Q38 6 25 5 Q12 6 10 16Z" fill="#6B3A2A"/>
+      <!-- hair tufts --><path d="M10 16 Q8 10 13 8" stroke="#6B3A2A" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M40 16 Q42 10 37 8" stroke="#6B3A2A" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <!-- eyebrows --><path d="M19 33 Q22 31 25 33" stroke="#6B3A2A" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M25 33 Q28 31 31 33" stroke="#6B3A2A" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <!-- eyes -->${mood==='dead' ? eyeStroke : `<circle cx="22.5" cy="39" r="2.5" fill="#333"/><circle cx="27.5" cy="39" r="2.5" fill="#333"/>
+      <circle cx="23" cy="38.5" r=".9" fill="#fff"/><circle cx="28" cy="38.5" r=".9" fill="#fff"/>`}
+      <!-- mouth --><path d="${mouthPath}" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <!-- blush --><ellipse cx="18" cy="44" rx="4" ry="2.5" fill="#ff9988" opacity=".5"/>
+      <ellipse cx="32" cy="44" rx="4" ry="2.5" fill="#ff9988" opacity=".5"/>
+    </svg>`;
+  },
+
+  // Meteor w=90 h=90
+  meteor: () => `<svg width="90" height="90" viewBox="0 0 90 90">
+    <defs><radialGradient id="mglo"><stop offset="0%" stop-color="#FF6D00" stop-opacity=".7"/><stop offset="100%" stop-color="#FF6D00" stop-opacity="0"/></radialGradient></defs>
+    <ellipse cx="45" cy="70" rx="40" ry="8" fill="rgba(0,0,0,.3)"/>
+    <circle cx="45" cy="45" r="35" fill="#glo" opacity=".5"/>
+    <!-- fire trail -->
+    <path d="M25 20 Q20 5 15 0 Q22 8 28 4 Q24 12 32 10 Q27 18 35 16 Q30 22 38 20" fill="#FF6D00" opacity=".9"/>
+    <path d="M30 22 Q26 10 22 4 Q28 12 33 9 Q29 16 37 15" fill="#FFD600" opacity=".8"/>
+    <!-- rock body -->
+    <ellipse cx="48" cy="52" rx="32" ry="30" fill="#5D4037"/>
+    <ellipse cx="48" cy="52" rx="30" ry="28" fill="#6D4C41"/>
+    <!-- craters -->
+    <ellipse cx="40" cy="50" rx="8" ry="6" fill="#4E342E"/>
+    <ellipse cx="56" cy="44" rx="5" ry="4" fill="#4E342E"/>
+    <ellipse cx="50" cy="62" rx="4" ry="3" fill="#4E342E"/>
+    <!-- highlights -->
+    <ellipse cx="38" cy="42" rx="6" ry="4" fill="#8D6E63" opacity=".7"/>
+    <!-- glow -->
+    <ellipse cx="48" cy="52" rx="35" ry="33" fill="url(#mglo)"/>
+  </svg>`,
+
+  // Goose w=70 h=80
+  goose: (angry=true) => {
+    const eyeColor = angry ? '#E63946' : '#333';
+    const bubbleLines = angry ? `<line x1="55" y1="8" x2="62" y2="3" stroke="#E63946" stroke-width="2"/>
+      <line x1="58" y1="10" x2="66" y2="8" stroke="#E63946" stroke-width="2"/>
+      <line x1="57" y1="14" x2="65" y2="14" stroke="#E63946" stroke-width="2"/>` : '';
+    return `<svg width="70" height="80" viewBox="0 0 70 80">
+      <!-- shadow --><ellipse cx="35" cy="78" rx="22" ry="5" fill="rgba(0,0,0,.2)"/>
+      <!-- body --><ellipse cx="35" cy="55" rx="26" ry="22" fill="#fff" stroke="#ddd" stroke-width="1.5"/>
+      <!-- wing --><ellipse cx="42" cy="50" rx="18" ry="12" fill="#eee" stroke="#ccc" stroke-width="1" transform="rotate(-15 42 50)"/>
+      <!-- feet --><line x1="26" y1="75" x2="22" y2="78" stroke="#F4831F" stroke-width="3" stroke-linecap="round"/>
+      <line x1="22" y1="78" x2="17" y2="76" stroke="#F4831F" stroke-width="3" stroke-linecap="round"/>
+      <line x1="22" y1="78" x2="20" y2="80" stroke="#F4831F" stroke-width="3" stroke-linecap="round"/>
+      <line x1="34" y1="75" x2="32" y2="78" stroke="#F4831F" stroke-width="3" stroke-linecap="round"/>
+      <line x1="32" y1="78" x2="27" y2="76" stroke="#F4831F" stroke-width="3" stroke-linecap="round"/>
+      <line x1="32" y1="78" x2="30" y2="80" stroke="#F4831F" stroke-width="3" stroke-linecap="round"/>
+      <!-- neck --><path d="M28 35 Q20 25 24 12 Q28 5 35 8 Q42 5 42 15 Q44 28 38 35Z" fill="#fff" stroke="#ddd" stroke-width="1.5"/>
+      <!-- head --><ellipse cx="33" cy="12" rx="14" ry="12" fill="#fff" stroke="#ddd" stroke-width="1.5"/>
+      <!-- beak --><path d="M44 12 L54 10 L54 15 L44 14Z" fill="#F4831F" stroke="#E65100" stroke-width="1.5"/>
+      <!-- eye --><circle cx="40" cy="10" r="3.5" fill="${eyeColor}"/>
+      <circle cx="41" cy="9" r="1" fill="#fff"/>
+      <!-- angry brows -->
+      ${angry ? '<path d="M35 5 Q38 3 42 5" stroke="#E63946" stroke-width="2.5" fill="none" stroke-linecap="round"/>' : ''}
+      ${bubbleLines}
+    </svg>`;
+  },
+
+  // Dragon/Mr Henderson w=100 h=120
+  dragon: (mood='angry') => {
+    const eyeColor = mood==='proud' ? '#4CAF50' : '#FF6D00';
+    return `<svg width="90" height="120" viewBox="0 0 90 120">
+      <!-- tail --><path d="M15 95 Q5 110 15 115 Q22 110 20 95" fill="#2E7D32"/>
+      <!-- shadow --><ellipse cx="50" cy="116" rx="30" ry="6" fill="rgba(0,0,0,.25)"/>
+      <!-- body --><ellipse cx="50" cy="75" rx="28" ry="38" fill="#388E3C"/>
+      <ellipse cx="50" cy="75" rx="20" ry="30" fill="#A5D6A7" opacity=".6"/>
+      <!-- wings --><path d="M24 60 Q0 30 10 18 Q22 40 30 55Z" fill="#2E7D32" stroke="#1B5E20" stroke-width="1.5"/>
+      <path d="M76 60 Q95 30 82 18 Q70 40 62 55Z" fill="#2E7D32" stroke="#1B5E20" stroke-width="1.5"/>
+      <!-- wing web --><path d="M24 60 Q12 42 14 28 M24 60 Q17 36 18 22" stroke="#1B5E20" stroke-width="1" fill="none" opacity=".5"/>
+      <!-- neck --><path d="M35 38 Q30 20 38 10 Q50 0 58 10 Q64 22 54 38Z" fill="#388E3C"/>
+      <!-- head --><ellipse cx="47" cy="18" rx="20" ry="16" fill="#43A047"/>
+      <!-- snout --><ellipse cx="58" cy="22" rx="12" ry="8" fill="#4CAF50"/>
+      <!-- nostrils --><circle cx="54" cy="22" r="2" fill="#2E7D32"/><circle cx="62" cy="22" r="2" fill="#2E7D32"/>
+      <!-- teeth --><rect x="52" y="26" width="4" height="5" fill="#fff" rx="1"/><rect x="58" y="26" width="4" height="5" fill="#fff" rx="1"/>
+      <!-- eyes --><circle cx="40" cy="14" r="5" fill="yellow" stroke="#111" stroke-width="1"/><circle cx="41" cy="13.5" r="2.5" fill="${eyeColor}"/>
+      <circle cx="54" cy="14" r="5" fill="yellow" stroke="#111" stroke-width="1"/><circle cx="55" cy="13.5" r="2.5" fill="${eyeColor}"/>
+      ${mood==='angry' ? '<path d="M35 8 Q38 6 43 8" stroke="#111" stroke-width="2.5" fill="none"/><path d="M49 8 Q52 6 58 8" stroke="#111" stroke-width="2.5" fill="none"/>' : ''}
+      ${mood==='proud' ? '<path d="M35 10 Q39 12 43 10" stroke="#4CAF50" stroke-width="2" fill="none"/><path d="M49 10 Q53 12 57 10" stroke="#4CAF50" stroke-width="2" fill="none"/>' : ''}
+      <!-- horns --><path d="M36 4 Q30 -6 34 -10 Q38 -2 36 4" fill="#1B5E20"/><path d="M55 4 Q60 -6 57 -10 Q54 -2 55 4" fill="#1B5E20"/>
+      <!-- spikes on back --><path d="M26 45 Q20 35 26 30 Q28 40 26 45Z" fill="#1B5E20"/><path d="M22 58 Q16 48 22 43 Q24 53 22 58Z" fill="#1B5E20"/>
+      <!-- arms --><path d="M22 70 Q10 72 10 80 Q14 85 22 80Z" fill="#388E3C"/><path d="M78 70 Q90 72 90 80 Q86 85 78 80Z" fill="#388E3C"/>
+      <!-- claws --><line x1="10" y1="80" x2="6" y2="85" stroke="#1B5E20" stroke-width="2" stroke-linecap="round"/>
+      <line x1="10" y1="80" x2="10" y2="86" stroke="#1B5E20" stroke-width="2" stroke-linecap="round"/>
+      <line x1="10" y1="80" x2="14" y2="85" stroke="#1B5E20" stroke-width="2" stroke-linecap="round"/>
+      <!-- legs --><rect x="34" y="106" width="12" height="12" fill="#2E7D32" rx="3"/>
+      <rect x="52" y="106" width="12" height="12" fill="#2E7D32" rx="3"/>
+      ${mood==='angry' ? '<path d="M62 26 L78 18 Q75 22 80 20 Q74 26 76 30 Q70 22 62 26Z" fill="#FF6D00"/><path d="M62 26 L82 26" stroke="#FF6D00" stroke-width="3" fill="none"/>' : ''}
+    </svg>`;
+  },
+
+  // Alien w=60 h=100
+  alien: () => `<svg width="60" height="100" viewBox="0 0 60 100">
+    <ellipse cx="30" cy="95" rx="18" ry="5" fill="rgba(0,0,0,.2)"/>
+    <!-- body --><ellipse cx="30" cy="68" rx="16" ry="22" fill="#4CAF50"/>
+    <ellipse cx="30" cy="65" rx="10" ry="14" fill="#81C784" opacity=".6"/>
+    <!-- legs --><rect x="20" y="85" width="7" height="14" fill="#388E3C" rx="3"/>
+    <rect x="33" y="85" width="7" height="14" fill="#388E3C" rx="3"/>
+    <!-- feet --><ellipse cx="23" cy="98" rx="9" ry="4" fill="#2E7D32"/>
+    <ellipse cx="36" cy="98" rx="9" ry="4" fill="#2E7D32"/>
+    <!-- arms --><path d="M14 60 Q5 55 6 48 Q10 52 16 58Z" fill="#388E3C"/>
+    <path d="M46 60 Q55 55 54 48 Q50 52 44 58Z" fill="#388E3C"/>
+    <!-- fingers --><line x1="6" y1="48" x2="3" y2="44" stroke="#388E3C" stroke-width="2" stroke-linecap="round"/>
+    <line x1="6" y1="48" x2="7" y2="43" stroke="#388E3C" stroke-width="2" stroke-linecap="round"/>
+    <line x1="54" y1="48" x2="57" y2="44" stroke="#388E3C" stroke-width="2" stroke-linecap="round"/>
+    <line x1="54" y1="48" x2="53" y2="43" stroke="#388E3C" stroke-width="2" stroke-linecap="round"/>
+    <!-- neck --><rect x="25" y="43" width="10" height="10" fill="#4CAF50"/>
+    <!-- big dome head --><ellipse cx="30" cy="30" rx="24" ry="26" fill="#66BB6A" stroke="#4CAF50" stroke-width="1.5"/>
+    <!-- skull veins/lines --><path d="M18 16 Q20 24 18 30" stroke="#4CAF50" stroke-width="1" fill="none" opacity=".4"/>
+    <path d="M40 16 Q42 24 42 30" stroke="#4CAF50" stroke-width="1" fill="none" opacity=".4"/>
+    <!-- big eyes --><ellipse cx="21" cy="30" rx="9" ry="10" fill="#000"/>
+    <ellipse cx="39" cy="30" rx="9" ry="10" fill="#000"/>
+    <ellipse cx="19" cy="27" rx="4" ry="5" fill="#1a1a3e"/>
+    <ellipse cx="37" cy="27" rx="4" ry="5" fill="#1a1a3e"/>
+    <circle cx="18" cy="26" r="2" fill="#fff" opacity=".7"/>
+    <circle cx="36" cy="26" r="2" fill="#fff" opacity=".7"/>
+    <!-- tiny mouth --><path d="M24 44 Q30 47 36 44" stroke="#2E7D32" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <!-- antennae --><line x1="22" y1="6" x2="16" y2="-4" stroke="#4CAF50" stroke-width="2"/>
+    <circle cx="16" cy="-4" r="4" fill="#F44336"/>
+    <line x1="38" y1="6" x2="44" y2="-4" stroke="#4CAF50" stroke-width="2"/>
+    <circle cx="44" cy="-4" r="4" fill="#F44336"/>
+  </svg>`,
+
+  // Spaceship w=130 h=70
+  spaceship: () => `<svg width="130" height="70" viewBox="0 0 130 70">
+    <defs><radialGradient id="shipglo"><stop offset="0%" stop-color="#64B5F6" stop-opacity=".8"/><stop offset="100%" stop-color="#1565C0" stop-opacity="0"/></radialGradient></defs>
+    <!-- glow --><ellipse cx="65" cy="55" rx="55" ry="14" fill="url(#shipglo)"/>
+    <!-- bottom hull --><ellipse cx="65" cy="48" rx="52" ry="16" fill="#546E7A"/>
+    <ellipse cx="65" cy="46" rx="50" ry="14" fill="#78909C"/>
+    <!-- lights row --><circle cx="30" cy="47" r="4" fill="#F44336"/><circle cx="45" cy="47" r="4" fill="#FFD600"/><circle cx="60" cy="47" r="4" fill="#00E676"/><circle cx="75" cy="47" r="4" fill="#00E5FF"/><circle cx="90" cy="47" r="4" fill="#F44336"/><circle cx="105" cy="47" r="4" fill="#FFD600"/>
+    <!-- dome --><ellipse cx="65" cy="32" rx="34" ry="24" fill="#B2EBF2" stroke="#80DEEA" stroke-width="2"/>
+    <ellipse cx="65" cy="32" rx="32" ry="22" fill="rgba(180,230,255,.6)"/>
+    <ellipse cx="55" cy="26" rx="10" ry="7" fill="#fff" opacity=".4" transform="rotate(-20 55 26)"/>
+    <!-- engine glow --><ellipse cx="40" cy="56" rx="8" ry="4" fill="#FF6D00" opacity=".8"/><ellipse cx="65" cy="58" rx="10" ry="5" fill="#00E676" opacity=".8"/><ellipse cx="90" cy="56" rx="8" ry="4" fill="#FF6D00" opacity=".8"/>
+  </svg>`,
+
+  // Mr Henderson (human form, tiny) w=50 h=85
+  henderson: () => `<svg width="50" height="85" viewBox="0 0 50 85">
+    <ellipse cx="25" cy="83" rx="12" ry="4" fill="rgba(0,0,0,.2)"/>
+    <!-- shoes --><rect x="14" y="77" width="10" height="7" fill="#333" rx="2"/><rect x="26" y="77" width="10" height="7" fill="#333" rx="2"/>
+    <!-- pants --><rect x="14" y="55" width="10" height="24" fill="#374151" rx="2"/><rect x="26" y="55" width="10" height="24" fill="#374151" rx="2"/>
+    <!-- jacket --><rect x="11" y="32" width="28" height="26" fill="#1D3557" rx="3"/>
+    <!-- tie --><path d="M22 32 L25 52 L28 32 Z" fill="#E63946"/>
+    <!-- arms --><rect x="2" y="35" width="11" height="8" fill="#3B5998" rx="3"/><rect x="37" y="35" width="11" height="8" fill="#3B5998" rx="3"/>
+    <!-- neck --><rect x="22" y="26" width="6" height="8" fill="#F4A261"/>
+    <!-- head --><circle cx="25" cy="20" r="15" fill="#F4A261" stroke="#111" stroke-width="1"/>
+    <!-- hair (thinning) --><path d="M11 16 Q14 8 25 7 Q36 8 39 16" stroke="#4a2800" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <!-- glasses --><rect x="14" y="18" width="9" height="6" rx="3" fill="none" stroke="#333" stroke-width="2"/><rect x="27" y="18" width="9" height="6" rx="3" fill="none" stroke="#333" stroke-width="2"/><line x1="23" y1="21" x2="27" y2="21" stroke="#333" stroke-width="1.5"/>
+    <!-- smile --><path d="M20 30 Q25 34 30 30" stroke="#333" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <!-- star in hand --><circle cx="2" cy="35" r="6" fill="#FFD600"/><text x="2" y="39" font-size="8" text-anchor="middle" fill="#F4831F">★</text>
+  </svg>`,
+
+  // Squished boy (flat)
+  boySquishedFlat: () => `<svg width="90" height="22" viewBox="0 0 90 22">
+    <ellipse cx="45" cy="11" rx="44" ry="10" fill="#E63946"/>
+    <ellipse cx="30" cy="11" rx="14" ry="6" fill="#F4A261"/>
+    <ellipse cx="30" cy="11" rx="7" ry="3" fill="#6B3A2A"/>
+    <circle cx="24" cy="10" r="2" fill="#333"/><circle cx="36" cy="10" r="2" fill="#333"/>
+    <path d="M27 15 Q30 13 33 15" stroke="#333" stroke-width="1.5" fill="none"/>
+    <!-- stars --><text x="65" y="9" font-size="12" fill="#FFD600">★</text><text x="75" y="16" font-size="9" fill="#F4831F">★</text>
+  </svg>`,
+};
+
+// ═══════════════════════════════════════════════════════
+// AUDIO ENGINE — rich sounds for every moment
+// ═══════════════════════════════════════════════════════
+let audioCtx = null;
+let muted = false;
+
+function ac() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// ── Low rumble / explosion ──
+function playBoom(vol=1.5) {
+  if (muted) return;
+  try {
+    const ctx = ac(), now = ctx.currentTime;
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.8, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/d.length, 1.5);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const g = ctx.createGain(), f = ctx.createBiquadFilter();
+    f.type='lowpass'; f.frequency.value=180;
+    src.connect(f); f.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(vol,now); g.gain.exponentialRampToValueAtTime(0.001,now+0.8);
+    src.start(now);
+  } catch(e){}
+}
+
+// ── Meteor whoosh (high-pitched fall) ──
+function playMeteorFall() {
+  if (muted) return;
+  try {
+    const ctx = ac(), now = ctx.currentTime;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type='sawtooth'; o.frequency.setValueAtTime(2200,now); o.frequency.exponentialRampToValueAtTime(80,now+0.7);
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.18,now); g.gain.setValueAtTime(0.22,now+0.3); g.gain.exponentialRampToValueAtTime(0.001,now+0.75);
+    o.start(now); o.stop(now+0.75);
+    setTimeout(()=>playBoom(1.8), 680);
+  } catch(e){}
+}
+
+// ── Camera shutter click ──
+function playCameraClick() {
+  if (muted) return;
+  try {
+    const ctx = ac(), now = ctx.currentTime;
+    // Flash/shutter sound - sharp transient
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.06, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3);
+    const src = ctx.createBufferSource(); src.buffer=buf;
+    const g=ctx.createGain(), f=ctx.createBiquadFilter();
+    f.type='highpass'; f.frequency.value=3000;
+    src.connect(f); f.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.8,now); src.start(now);
+    // flash tone
+    const o=ctx.createOscillator(), go=ctx.createGain();
+    o.type='sine'; o.frequency.value=3500;
+    o.connect(go); go.connect(ctx.destination);
+    go.gain.setValueAtTime(0.15,now); go.gain.exponentialRampToValueAtTime(0.001,now+0.05);
+    o.start(now); o.stop(now+0.05);
+  } catch(e){}
+}
+
+// ── Selfie notification ping ──
+function playNotification() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    [1318,1760,2093].forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sine'; o.frequency.value=f;
+      o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.18,now+i*.12); g.gain.exponentialRampToValueAtTime(0.001,now+i*.12+.22);
+      o.start(now+i*.12); o.stop(now+i*.12+.22);
+    });
+  } catch(e){}
+}
+
+// ── Cartoon fall whistle ──
+function playFallWhistle() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(1200,now); o.frequency.exponentialRampToValueAtTime(80,now+1.1);
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.25,now); g.gain.exponentialRampToValueAtTime(0.001,now+1.15);
+    o.start(now); o.stop(now+1.2);
+  } catch(e){}
+}
+
+// ── Cartoon splat ──
+function playSplat() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const buf=ctx.createBuffer(1,ctx.sampleRate*.25,ctx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.2)*0.9;
+    const src=ctx.createBufferSource(); src.buffer=buf;
+    const g=ctx.createGain(), f=ctx.createBiquadFilter();
+    f.type='lowpass'; f.frequency.value=600;
+    src.connect(f); f.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(1.2,now);
+    src.start(now);
+    const o=ctx.createOscillator(), go=ctx.createGain();
+    o.type='sawtooth'; o.frequency.setValueAtTime(300,now); o.frequency.exponentialRampToValueAtTime(60,now+.25);
+    o.connect(go); go.connect(ctx.destination);
+    go.gain.setValueAtTime(0.3,now); go.gain.exponentialRampToValueAtTime(0.001,now+.3);
+    o.start(now); o.stop(now+.3);
+  } catch(e){}
+}
+
+// ── Goose honk (nasal, layered) ──
+function playHonk(pitch=1) {
+  if (muted) return;
+  try {
+    const ctx = ac(), now = ctx.currentTime;
+    const osc1 = ctx.createOscillator(), osc2 = ctx.createOscillator();
+    const g1 = ctx.createGain(), g2 = ctx.createGain(), master = ctx.createGain();
+    const f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter();
+    osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(220*pitch, now);
+    osc1.frequency.setValueAtTime(190*pitch, now+0.06);
+    osc1.frequency.setValueAtTime(240*pitch, now+0.12);
+    osc1.frequency.setValueAtTime(210*pitch, now+0.2);
+    osc1.frequency.exponentialRampToValueAtTime(180*pitch, now+0.38);
+    f1.type='bandpass'; f1.frequency.value=600*pitch; f1.Q.value=3;
+    osc1.connect(f1); f1.connect(g1); g1.connect(master);
+    g1.gain.setValueAtTime(0.6,now); g1.gain.exponentialRampToValueAtTime(0.001,now+0.4);
+    osc2.type = 'sawtooth'; osc2.frequency.setValueAtTime(110*pitch, now);
+    osc2.frequency.setValueAtTime(95*pitch, now+0.08);
+    osc2.frequency.setValueAtTime(115*pitch, now+0.2);
+    f2.type='bandpass'; f2.frequency.value=300*pitch; f2.Q.value=2;
+    osc2.connect(f2); f2.connect(g2); g2.connect(master);
+    g2.gain.setValueAtTime(0.4,now); g2.gain.exponentialRampToValueAtTime(0.001,now+0.42);
+    master.connect(ctx.destination);
+    master.gain.setValueAtTime(0.7,now);
+    osc1.start(now); osc1.stop(now+0.45);
+    osc2.start(now); osc2.stop(now+0.45);
+    setTimeout(()=>{ if(!muted) {
+      const ctx2=ac(), n2=ctx2.currentTime;
+      const o=ctx2.createOscillator(), g=ctx2.createGain(), f=ctx2.createBiquadFilter();
+      o.type='sawtooth'; o.frequency.setValueAtTime(200*pitch,n2); o.frequency.exponentialRampToValueAtTime(170*pitch,n2+0.3);
+      f.type='bandpass'; f.frequency.value=550*pitch; f.Q.value=3;
+      o.connect(f); f.connect(g); g.connect(ctx2.destination);
+      g.gain.setValueAtTime(0.5,n2); g.gain.exponentialRampToValueAtTime(0.001,n2+0.35);
+      o.start(n2); o.stop(n2+0.35);
+    }}, 320);
+  } catch(e){}
+}
+
+// ── Goose angry hiss ──
+function playGooseHiss() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const buf=ctx.createBuffer(1,ctx.sampleRate*0.4,ctx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.6;
+    const src=ctx.createBufferSource(); src.buffer=buf;
+    const f=ctx.createBiquadFilter(), g=ctx.createGain();
+    f.type='bandpass'; f.frequency.value=1800; f.Q.value=1.5;
+    src.connect(f); f.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.5,now+0.05);
+    g.gain.setValueAtTime(0.5,now+0.3); g.gain.exponentialRampToValueAtTime(0.001,now+0.42);
+    src.start(now);
+  } catch(e){}
+}
+
+function playHonkTornado() {
+  if (muted) return;
+  for(let i=0;i<6;i++) setTimeout(()=>playHonk(0.7+Math.random()*0.7), i*170);
+}
+
+// ── Coin insert ──
+function playCoin() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    [800,1100,1500].forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination); o.type='sine'; o.frequency.value=f;
+      g.gain.setValueAtTime(0.22,now+i*.1); g.gain.exponentialRampToValueAtTime(0.001,now+i*.1+.25);
+      o.start(now+i*.1); o.stop(now+i*.1+.25);
+    });
+  } catch(e){}
+}
+
+// ── Vending machine beep (angry) ──
+function playVendBeep() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    [880,880,660].forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='square'; o.frequency.value=f;
+      o.connect(g); g.connect(ctx.destination);
+      const t=now+i*.18;
+      g.gain.setValueAtTime(0.2,t); g.gain.setValueAtTime(0.2,t+0.13); g.gain.exponentialRampToValueAtTime(0.001,t+0.15);
+      o.start(t); o.stop(t+0.15);
+    });
+  } catch(e){}
+}
+
+// ── Vending machine happy sigh / dispensing ──
+function playVendHappy() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(400,now); o.frequency.exponentialRampToValueAtTime(200,now+0.5);
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.18,now); g.gain.exponentialRampToValueAtTime(0.001,now+0.55);
+    o.start(now); o.stop(now+0.55);
+    // chips drop thunk
+    setTimeout(()=>{
+      const ctx2=ac(), n=ctx2.currentTime;
+      const b=ctx2.createBuffer(1,ctx2.sampleRate*0.15,ctx2.sampleRate);
+      const d=b.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);
+      const s=ctx2.createBufferSource(); s.buffer=b;
+      const f=ctx2.createBiquadFilter(),g2=ctx2.createGain();
+      f.type='lowpass'; f.frequency.value=400;
+      s.connect(f); f.connect(g2); g2.connect(ctx2.destination);
+      g2.gain.setValueAtTime(0.5,n); s.start(n);
+    },500);
+  } catch(e){}
+}
+
+// ── Metal crunch / machine tipping ──
+function playMetalCrunch() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const buf=ctx.createBuffer(1,ctx.sampleRate*0.5,ctx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) {
+      const t=i/ctx.sampleRate;
+      d[i]=(Math.random()*2-1)*0.8*Math.pow(1-t/0.5,0.5)*(1+Math.sin(t*400)*0.3);
+    }
+    const src=ctx.createBufferSource(); src.buffer=buf;
+    const f=ctx.createBiquadFilter(), g=ctx.createGain();
+    f.type='peaking'; f.frequency.value=800; f.gain.value=10;
+    src.connect(f); f.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(1,now); g.gain.exponentialRampToValueAtTime(0.001,now+0.55);
+    src.start(now);
+  } catch(e){}
+}
+
+// ── Chalk squeak on board ──
+function playChalkSqueak() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sawtooth'; o.frequency.setValueAtTime(2400,now); o.frequency.setValueAtTime(1800,now+.08);
+    o.frequency.setValueAtTime(2600,now+.15); o.frequency.setValueAtTime(2000,now+.22);
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.05,now); g.gain.setValueAtTime(0.08,now+.1);
+    g.gain.exponentialRampToValueAtTime(0.001,now+0.3);
+    o.start(now); o.stop(now+0.3);
+  } catch(e){}
+}
+
+// ── Dragon roar ──
+function playRoar() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const o=ctx.createOscillator(), g=ctx.createGain(), dist=ctx.createWaveShaper();
+    const curve=new Float32Array(256); for(let i=0;i<256;i++) { const x=i/128-1; curve[i]=x/(1+Math.abs(x)*4); }
+    dist.curve=curve;
+    o.type='sawtooth'; o.frequency.setValueAtTime(90,now); o.frequency.exponentialRampToValueAtTime(50,now+1.2);
+    o.connect(dist); dist.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.8,now); g.gain.exponentialRampToValueAtTime(0.001,now+1.3);
+    o.start(now); o.stop(now+1.3);
+  } catch(e){}
+}
+
+// ── Dragon fire burst ──
+function playFireBurst() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const buf=ctx.createBuffer(1,ctx.sampleRate*0.35,ctx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.7;
+    const src=ctx.createBufferSource(); src.buffer=buf;
+    const f=ctx.createBiquadFilter(), g=ctx.createGain();
+    f.type='bandpass'; f.frequency.value=1200; f.Q.value=0.7;
+    src.connect(f); f.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.6,now+.05);
+    g.gain.exponentialRampToValueAtTime(0.001,now+.38);
+    src.start(now);
+    const o=ctx.createOscillator(), go=ctx.createGain();
+    o.type='sawtooth'; o.frequency.setValueAtTime(300,now); o.frequency.exponentialRampToValueAtTime(80,now+.35);
+    o.connect(go); go.connect(ctx.destination);
+    go.gain.setValueAtTime(0.25,now); go.gain.exponentialRampToValueAtTime(0.001,now+.38);
+    o.start(now); o.stop(now+.38);
+  } catch(e){}
+}
+
+// ── Dragon happy cry (slide up) ──
+function playDragonCry() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='triangle'; o.frequency.setValueAtTime(100,now); o.frequency.exponentialRampToValueAtTime(280,now+.8);
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.4,now); g.gain.setValueAtTime(0.4,now+.6); g.gain.exponentialRampToValueAtTime(0.001,now+.9);
+    o.start(now); o.stop(now+.9);
+  } catch(e){}
+}
+
+// ── Alien communication beeps ──
+function playAlien() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='triangle'; o.connect(g); g.connect(ctx.destination);
+    o.frequency.setValueAtTime(300,now); o.frequency.exponentialRampToValueAtTime(900,now+.12);
+    o.frequency.exponentialRampToValueAtTime(150,now+.25); o.frequency.exponentialRampToValueAtTime(600,now+.4);
+    g.gain.setValueAtTime(0.3,now); g.gain.exponentialRampToValueAtTime(0.001,now+.5);
+    o.start(now); o.stop(now+.5);
+  } catch(e){}
+}
+
+// ── Spaceship hum (sustained) ──
+function playShipHum() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    [55,110,165].forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sine'; o.frequency.value=f;
+      o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.06+i*.02,now+0.3);
+      g.gain.setValueAtTime(0.06+i*.02,now+0.9); g.gain.exponentialRampToValueAtTime(0.001,now+1.4);
+      o.start(now); o.stop(now+1.4);
+    });
+  } catch(e){}
+}
+
+// ── Tractor beam ──
+function playTractorBeam() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(200,now);
+    o.frequency.setValueAtTime(220,now+.1); o.frequency.setValueAtTime(190,now+.2);
+    o.frequency.setValueAtTime(215,now+.3);
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.3,now); g.gain.setValueAtTime(0.3,now+1); g.gain.exponentialRampToValueAtTime(0.001,now+1.5);
+    o.start(now); o.stop(now+1.5);
+    const o2=ctx.createOscillator(), g2=ctx.createGain();
+    o2.type='sawtooth'; o2.frequency.value=80;
+    o2.connect(g2); g2.connect(ctx.destination);
+    g2.gain.setValueAtTime(0.06,now); g2.gain.setValueAtTime(0.06,now+1); g2.gain.exponentialRampToValueAtTime(0.001,now+1.5);
+    o2.start(now); o2.stop(now+1.5);
+  } catch(e){}
+}
+
+// ── Win fanfare ──
+function playWin() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    [523,659,784,523,659,1047].forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='square'; o.connect(g); g.connect(ctx.destination); o.frequency.value=f;
+      g.gain.setValueAtTime(0.15,now+i*.14); g.gain.exponentialRampToValueAtTime(0.001,now+i*.14+.28);
+      o.start(now+i*.14); o.stop(now+i*.14+.28);
+    });
+  } catch(e){}
+}
+
+// ── Death descend ──
+function playDie() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sawtooth'; o.frequency.setValueAtTime(440,now); o.frequency.exponentialRampToValueAtTime(55,now+1);
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.4,now); g.gain.exponentialRampToValueAtTime(0.001,now+1.1);
+    o.start(now); o.stop(now+1.1);
+  } catch(e){}
+}
+
+// ── UI click ──
+function playClick() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.frequency.setValueAtTime(600,now); o.frequency.exponentialRampToValueAtTime(900,now+.06);
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.25,now); g.gain.exponentialRampToValueAtTime(0.001,now+.1);
+    o.start(now); o.stop(now+.1);
+  } catch(e){}
+}
+
+// ── Bounce / boing ──
+function playBoing() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(80,now); o.frequency.exponentialRampToValueAtTime(600,now+0.25);
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.35,now); g.gain.exponentialRampToValueAtTime(0.001,now+0.3);
+    o.start(now); o.stop(now+0.3);
+  } catch(e){}
+}
+
+// ── Whoosh (flip/swoop) ──
+function playWhoosh() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    const buf=ctx.createBuffer(1,ctx.sampleRate*.3,ctx.sampleRate);
+    const d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.4;
+    const src=ctx.createBufferSource(); src.buffer=buf;
+    const f=ctx.createBiquadFilter(), g=ctx.createGain();
+    f.type='highpass'; f.frequency.setValueAtTime(4000,now); f.frequency.exponentialRampToValueAtTime(200,now+.3);
+    src.connect(f); f.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.6,now); g.gain.exponentialRampToValueAtTime(0.001,now+.32);
+    src.start(now);
+  } catch(e){}
+}
+
+// ── Boy voice (chirp) ──
+function playBoyChirp() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    [900,1100,1300,1100].forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='triangle'; o.frequency.value=f;
+      o.connect(g); g.connect(ctx.destination);
+      const t=now+i*.06;
+      g.gain.setValueAtTime(0.12,t); g.gain.exponentialRampToValueAtTime(0.001,t+.08);
+      o.start(t); o.stop(t+.08);
+    });
+  } catch(e){}
+}
+
+// ── Start jingle ──
+function playStart() {
+  if (muted) return;
+  try {
+    const ctx=ac(), now=ctx.currentTime;
+    [261,329,392,523,659].forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='square'; o.frequency.value=f; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.12,now+i*.09); g.gain.exponentialRampToValueAtTime(0.001,now+i*.09+.2);
+      o.start(now+i*.09); o.stop(now+i*.09+.2);
+    });
+  } catch(e){}
+}
+
+function toggleMute() {
+  muted = !muted;
+  document.getElementById('soundBtn').textContent = muted ? '🔇 SOUND: OFF' : '🔊 SOUND: ON';
+}
+
+// ═══════════════════════════════════════════════════════
+// SCENE SETUP
+// ═══════════════════════════════════════════════════════
+function heartsHTML(n=3) {
+  return Array.from({length:n}, ()=>`<svg class="heart-svg" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.41 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.08C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.41 22 8.5c0 3.77-3.4 6.86-8.55 11.53L12 21.35z" fill="#E63946" stroke="#111" stroke-width="1"/></svg>`).join('');
+}
+
+// ── Make a char-cont clickable with a sound + poke anim ──
+function makeClickable(el, soundFn, hint='click me!', spinInstead=false) {
+  el.classList.add('clickable-char');
+  // hint badge
+  const h = document.createElement('div');
+  h.className='click-hint'; h.textContent='👆 '+hint;
+  el.style.position='relative';
+  el.appendChild(h);
+  el.addEventListener('click', ()=>{
+    soundFn();
+    const cls = spinInstead ? 'char-poke-spin' : 'char-poke';
+    el.classList.remove('char-poke','char-poke-spin');
+    void el.offsetWidth; // reflow
+    el.classList.add(cls);
+    setTimeout(()=>el.classList.remove(cls), 500);
+  });
+}
+
+function setupScenes() {
+  // ── hearts ──
+  ['hearts1','hearts2','hearts3','hearts4','hearts5'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.innerHTML=heartsHTML();
+  });
+
+  // ── Scene 1 ──
+  document.getElementById('s1boy').innerHTML = S.boy(1,'normal');
+  document.getElementById('s1meteorInner').innerHTML = S.meteor();
+  makeClickable(document.getElementById('s1boy'), ()=>playBoyChirp(), 'poke me');
+  makeClickable(document.getElementById('s1meteor'), ()=>{ playMeteorFall(); }, 'touch it??', true);
+
+  // ── Scene 2 ──
+  document.getElementById('s2boy').innerHTML = S.boy(1,'normal');
+  document.getElementById('s2g1').innerHTML = S.goose(true);
+  document.getElementById('s2g2').innerHTML = S.goose(true);
+  document.getElementById('s2g3').innerHTML = S.goose(false);
+  makeClickable(document.getElementById('s2boy'), ()=>playBoyChirp(), 'poke me');
+  makeClickable(document.getElementById('s2g1'), ()=>playHonk(1.1), 'honk!');
+  makeClickable(document.getElementById('s2g2'), ()=>playHonk(0.9), 'HONK!!');
+  makeClickable(document.getElementById('s2g3'), ()=>{ playHonk(1.0); playGooseHiss(); }, 'HISSSSS');
+
+  // ── Scene 3 ──
+  document.getElementById('s3boy').innerHTML = S.boy(1,'normal');
+  document.getElementById('s3escort').innerHTML = S.goose(false);
+  makeClickable(document.getElementById('s3boy'), ()=>playBoyChirp(), 'poke me');
+  makeClickable(document.getElementById('s3escort'), ()=>playHonk(0.85), 'friendly honk');
+  // vending machine clickable
+  const vend = document.getElementById('s3vend');
+  if(vend) {
+    vend.classList.add('clickable-char');
+    vend.style.cursor='pointer';
+    const h=document.createElement('div'); h.className='click-hint'; h.textContent='👆 exact change!!';
+    vend.style.position='absolute'; vend.appendChild(h);
+    vend.addEventListener('click',()=>{ playVendBeep(); vend.classList.remove('char-poke'); void vend.offsetWidth; vend.classList.add('char-poke'); setTimeout(()=>vend.classList.remove('char-poke'),500); });
+  }
+
+  // ── Scene 4 ──
+  document.getElementById('s4boy').innerHTML = S.boy(1,'normal');
+  ['s4s1','s4s2','s4s3'].forEach(id=>{ document.getElementById(id).innerHTML=S.boy(0.65,'scared'); });
+  document.getElementById('s4dragon').innerHTML = S.dragon('angry');
+  makeClickable(document.getElementById('s4boy'), ()=>playBoyChirp(), 'poke me');
+  makeClickable(document.getElementById('s4dragon'), ()=>{ playRoar(); playFireBurst(); }, 'poke the dragon??', true);
+  makeClickable(document.getElementById('s4s1'), ()=>playBoyChirp(), 'scared kid');
+  makeClickable(document.getElementById('s4s2'), ()=>{ playBoyChirp(); playFireBurst(); }, 'also scared');
+  makeClickable(document.getElementById('s4s3'), ()=>playBoyChirp(), 'SO scared');
+
+  // ── Scene 5 ──
+  document.getElementById('s5boy').innerHTML = S.boy(1,'normal');
+  document.getElementById('s5p1').innerHTML = S.boy(0.7,'scared');
+  document.getElementById('s5ship').innerHTML = S.spaceship();
+  document.getElementById('s5alien').innerHTML = S.alien();
+  makeClickable(document.getElementById('s5boy'), ()=>playBoyChirp(), 'poke me');
+  makeClickable(document.getElementById('s5alien'), ()=>playAlien(), 'greet alien');
+  makeClickable(document.getElementById('s5ship'), ()=>playShipHum(), 'tap ship', true);
+  makeClickable(document.getElementById('s5p1'), ()=>{ playBoyChirp(); playFallWhistle(); }, 'panicking kid');
+
+  // ── Start scene ──
+  const sc = document.getElementById('startScene');
+  sc.innerHTML = `
+    <div class="start-char-wrap">
+      <div style="animation:titlePop 1s ease-in-out infinite;cursor:pointer;" onclick="playMeteorFall()" title="Click!">${S.meteor()}</div>
+      <div class="sc-label">METEOR</div>
+    </div>
+    <div class="start-char-wrap">
+      <div style="animation:titlePop 1.1s ease-in-out infinite;cursor:pointer;" onclick="playHonk()" title="Click!">${S.goose(true)}</div>
+      <div class="sc-label">GEESE</div>
+    </div>
+    <div class="start-char-wrap">
+      <div style="animation:titlePop 0.9s ease-in-out infinite;cursor:pointer;" onclick="playBoyChirp()" title="Click!">${S.boy(1.1,'happy')}</div>
+      <div class="sc-label">YOU</div>
+    </div>
+    <div class="start-char-wrap">
+      <div style="animation:titlePop 1.3s ease-in-out infinite;cursor:pointer;" onclick="playRoar()" title="Click!">${S.dragon('angry')}</div>
+      <div class="sc-label">MR. HENDERSON</div>
+    </div>
+    <div class="start-char-wrap">
+      <div style="animation:titlePop 1.2s ease-in-out infinite;cursor:pointer;" onclick="playAlien()" title="Click!">${S.alien()}</div>
+      <div class="sc-label">??</div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+// SCREEN MANAGEMENT
+// ═══════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════
+// CUTSCENE ENGINE
+// ═══════════════════════════════════════════════════════
+let csTimeout = [];
+
+function clearCutscene() {
+  csTimeout.forEach(clearTimeout);
+  csTimeout = [];
+  document.getElementById('csStage').innerHTML = '';
+  document.getElementById('csCaption').classList.remove('show');
+  document.getElementById('csCaption').textContent = '';
+}
+
+function csAt(delay, fn) {
+  csTimeout.push(setTimeout(fn, delay));
+}
+
+function setCaption(text) {
+  const el = document.getElementById('csCaption');
+  el.textContent = text; el.classList.add('show');
+}
+
+function clearCaption() {
+  document.getElementById('csCaption').classList.remove('show');
+}
+
+function bang(text, x, y) {
+  const el = document.createElement('div');
+  el.className = 'effect-bang pop';
+  el.style.left = x; el.style.top = y;
+  el.textContent = text;
+  document.getElementById('csStage').appendChild(el);
+  setTimeout(()=>el.remove(), 1500);
+}
+
+function placeSVG(id, svgHTML, x, y, extraStyle='') {
+  const stage = document.getElementById('csStage');
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = id; el.style.position='absolute';
+    stage.appendChild(el);
+  }
+  el.innerHTML = svgHTML;
+  el.style.cssText = `position:absolute;left:${x};bottom:${y};${extraStyle}`;
+  return el;
+}
+
+// ── CUTSCENE DEFINITIONS ──
+const CUTSCENES = {
+
+  'meteor_jump': (done) => {
+    document.getElementById('csBg').style.background = 'linear-gradient(180deg, #7EC8E3 0%, #7EC8E3 55%, #5C8A2E 55%, #5C8A2E 72%, #6B7280 72%)';
+    document.getElementById('csLabel').textContent = '🦸 TRIPLE BACKFLIP TIME';
+    clearCutscene();
+
+    const boy = placeSVG('cs_boy', S.boy(1.1,'normal'), '-80px', '28%', 'transition:left 0.6s ease-in');
+    const meteor = placeSVG('cs_meteor', S.meteor(), '40%', '28%');
+
+    // sun and road decoration
+    const deco = document.createElement('div');
+    deco.innerHTML = `<div style="position:absolute;bottom:0;width:100%;height:28%;background:#6B7280;"></div>
+      <div style="position:absolute;bottom:28%;width:100%;height:18%;background:#5C8A2E;"></div>
+      <div style="position:absolute;top:15px;right:12%;width:52px;height:52px;background:#FFE500;border-radius:50%;border:3px solid #F4831F;box-shadow:0 0 20px rgba(255,229,0,.5);"></div>`;
+    deco.style.cssText='position:absolute;inset:0;z-index:-1;';
+    document.getElementById('csStage').insertBefore(deco, document.getElementById('csStage').firstChild);
+
+    setCaption('A METEOR!!');
+    playMeteorFall();
+
+    csAt(100, ()=>{ bang('BOOM!!',  '38%','30%'); });
+    csAt(500, ()=>{ setCaption("Oh no. Time to jump."); boy.style.left='8%'; playBoyChirp(); });
+    csAt(900, ()=>{
+      setCaption("TRIPLE BACKFLIP!!!");
+      playWhoosh();
+      boy.style.transition='none';
+      boy.style.left = '34%';
+      boy.style.animation = 'charFlip 0.7s ease-in-out both';
+    });
+    csAt(1200, ()=>{ bang('WHOOSH!', '32%', '20%'); playWhoosh(); });
+    csAt(1600, ()=>{
+      playBoing();
+      boy.style.animation='none';
+      boy.style.left='55%';
+      boy.style.bottom='28%';
+      boy.innerHTML = S.boy(1.1,'happy');
+      setCaption("NAILED IT! The pigeon is clapping.");
+      bang('★ PERFECT! ★', '48%', '35%');
+    });
+    csAt(2500, ()=>{ setCaption("Now for that walk to school..."); playBoyChirp(); });
+    csAt(3400, done);
+  },
+
+  'selfie_die': (done) => {
+    document.getElementById('csBg').style.background = 'linear-gradient(180deg, #7EC8E3 55%, #5C8A2E 55%, #5C8A2E 72%, #6B7280 72%)';
+    document.getElementById('csLabel').textContent = '📸 FATAL SELFIE';
+    clearCutscene();
+
+    const deco = document.createElement('div');
+    deco.innerHTML='<div style="position:absolute;bottom:0;width:100%;height:28%;background:#6B7280;"></div><div style="position:absolute;bottom:28%;width:100%;height:18%;background:#5C8A2E;"></div>';
+    deco.style='position:absolute;inset:0;z-index:-1;';
+    document.getElementById('csStage').insertBefore(deco, null);
+
+    const boy = placeSVG('cs_boy', S.boy(1.1,'normal'), '22%', '28%');
+    const meteor = placeSVG('cs_meteor', S.meteor(), '42%', '28%', 'animation:idle-shake .3s ease-in-out infinite');
+
+    setCaption("Ooh, free content for the feed!");
+    playBoyChirp();
+    csAt(400, ()=>{
+      // phone SVG
+      const phone = document.createElement('div');
+      phone.id='cs_phone';
+      phone.innerHTML=`<svg width="20" height="32" viewBox="0 0 20 32"><rect x="0" y="0" width="20" height="32" rx="3" fill="#333"/><rect x="2" y="2" width="16" height="24" fill="#81D4FA"/><circle cx="10" cy="28" r="2" fill="#555"/></svg>`;
+      phone.style='position:absolute;left:30%;bottom:58%;z-index:5;';
+      document.getElementById('csStage').appendChild(phone);
+      setCaption("Perfect angle... say cheese...");
+    });
+    csAt(1000, ()=>{ playCameraClick(); bang('FLASH!!', '25%','40%'); setCaption("Hmm, the meteor seems offended."); });
+    csAt(1200, ()=>{ playNotification(); });
+    csAt(1600, ()=>{
+      setCaption("THE METEOR IS ROLLING!!! 😱");
+      meteor.style.animation='meteorRoll 0.8s ease-in-out both';
+      playMeteorFall();
+    });
+    csAt(2200, ()=>{
+      meteor.style.display='none';
+      boy.innerHTML = S.boySquishedFlat();
+      boy.style.left='38%'; boy.style.bottom='28%';
+      playDie(); playSplat();
+      bang('SQUISH!!', '30%','35%');
+      setCaption("47,000 likes. Posthumous influencer. Congrats.");
+    });
+    csAt(3600, done);
+  },
+
+  'goose_reason': (done) => {
+    document.getElementById('csBg').style.background = 'linear-gradient(180deg, #A8D8EA 50%, #5C8A2E 50%, #5C8A2E 70%, #8B7355 70%)';
+    document.getElementById('csLabel').textContent = '🕊️ DIPLOMATIC SKILLS';
+    clearCutscene();
+    const deco = document.createElement('div');
+    deco.innerHTML='<div style="position:absolute;bottom:0;width:100%;height:28%;background:#8B7355;"></div><div style="position:absolute;bottom:28%;width:100%;height:20%;background:#5C8A2E;"></div>';
+    deco.style='position:absolute;inset:0;z-index:-1;';
+    document.getElementById('csStage').insertBefore(deco,null);
+
+    const boy = placeSVG('cs_boy', S.boy(1.1,'normal'), '12%', '28%', 'transition:left 0.5s ease');
+    const g1 = placeSVG('cs_g1', S.goose(true), '52%', '28%');
+    const g2 = placeSVG('cs_g2', S.goose(true), '62%', '28%');
+    const g3 = placeSVG('cs_g3', S.goose(true), '72%', '28%');
+
+    playHonk(); setCaption("HONK HONK HONK!!!");
+    csAt(200, ()=>{ playGooseHiss(); });
+    csAt(600, ()=>{
+      boy.style.left='28%';
+      setCaption("\"I hear you, friends. I respect your boundaries.\"");
+      playBoyChirp();
+    });
+    csAt(1200, ()=>{
+      boy.style.left='28%'; boy.style.bottom='20%';
+      boy.innerHTML=S.boy(1.1,'normal');
+      setCaption("You sit cross-legged on the ground...");
+    });
+    csAt(1800, ()=>{
+      g1.style.animation='gooseBow 1s ease-in-out forwards';
+      setTimeout(()=>{ g2.style.animation='gooseBow 1s ease-in-out forwards'; playHonk(0.8); },300);
+      setTimeout(()=>{ g3.style.animation='gooseBow 1s ease-in-out forwards'; },600);
+      setCaption("The lead goose STARES at you for 10 seconds...");
+    });
+    csAt(2600, ()=>{
+      bang('★ BOW ★', '55%','45%');
+      setCaption("...then bows. The geese form an honor guard!");
+      boy.innerHTML = S.boy(1.1,'happy');
+      boy.style.bottom='28%';
+      playBoing();
+    });
+    csAt(3500, done);
+  },
+
+  'goose_die': (done) => {
+    document.getElementById('csBg').style.background = 'linear-gradient(180deg, #1B5E20 0%, #0D3B0D 60%, #000 100%)';
+    document.getElementById('csLabel').textContent = '🌪️ GOOSE TORNADO';
+    clearCutscene();
+
+    const boy = placeSVG('cs_boy', S.boy(1.1,'scared'), '20%', '30%', 'transition:all 0.3s;transform-origin:center bottom;');
+    const g1 = placeSVG('cs_g1', S.goose(true), '52%', '30%');
+    const g2 = placeSVG('cs_g2', S.goose(true), '62%', '30%');
+    const g3 = placeSVG('cs_g3', S.goose(true), '72%', '30%');
+
+    setCaption("YOU RUN IN SCREAMING!!!");
+    playHonkTornado();
+    playBoyChirp();
+
+    csAt(200, ()=>{ boy.style.left='45%'; bang('AAAAAAA!!', '15%','40%'); playWhoosh(); });
+    csAt(700, ()=>{
+      setCaption("The geese form a GOOSE TORNADO!! 🌪️");
+      [g1,g2,g3].forEach((g,i)=>{
+        g.style.animation=`goosetornado ${0.8+i*0.1}s ease-in both`;
+        g.style.animationDelay = i*200+'ms';
+      });
+      playHonkTornado();
+    });
+    csAt(1000, ()=>{ playGooseHiss(); });
+    csAt(1300, ()=>{
+      bang('TORNADO!!!', '40%','25%');
+      setCaption("You are LAUNCHED 40 FEET INTO THE AIR!!");
+      boy.style.animation='playerLaunch 1.2s ease-in both';
+      playFallWhistle();
+      setTimeout(()=>playDie(), 800);
+    });
+    csAt(2200, ()=>{
+      // Goldfish
+      const fish = document.createElement('div');
+      fish.innerHTML=`<svg width="50" height="40" viewBox="0 0 50 40"><ellipse cx="25" cy="22" rx="18" ry="12" fill="#FF8C00"/><polygon points="40,12 50,5 50,20" fill="#FF6D00"/><circle cx="15" cy="20" r="4" fill="#fff" stroke="#333" stroke-width="1"/><circle cx="15" cy="20" r="2" fill="#333"/><path d="M20 28 Q25 32 30 28" stroke="#E65100" stroke-width="1.5" fill="none"/><text x="55" y="18" font-size="11" fill="#666" font-family="Fredoka One">...says nothing</text></svg>`;
+      fish.style='position:absolute;left:8%;bottom:22%;';
+      document.getElementById('csStage').appendChild(fish);
+      setCaption("A goldfish witnessed everything. He tells no one.");
+      playSplat();
+    });
+    csAt(3600, done);
+  },
+
+  'machine_pay': (done) => {
+    document.getElementById('csBg').style.background = 'linear-gradient(180deg, #A8D8EA 50%, #5C8A2E 50%, #5C8A2E 68%, #8B7355 68%)';
+    document.getElementById('csLabel').textContent = '🪙 EXACT CHANGE';
+    clearCutscene();
+    const deco=document.createElement('div'); deco.innerHTML='<div style="position:absolute;bottom:0;width:100%;height:28%;background:#8B7355;"></div><div style="position:absolute;bottom:28%;width:100%;height:20%;background:#5C8A2E;"></div>'; deco.style='position:absolute;inset:0;z-index:-1;'; document.getElementById('csStage').insertBefore(deco,null);
+
+    const boy = placeSVG('cs_boy', S.boy(1.1,'normal'), '12%', '28%', 'transition:left 0.5s ease');
+
+    const vendDiv = document.createElement('div');
+    vendDiv.id='cs_vend';
+    vendDiv.innerHTML=`<div style="width:62px;height:110px;background:linear-gradient(#C62828,#B71C1C);border:4px solid #111;border-radius:6px 6px 3px 3px;box-shadow:5px 5px 0 #111;position:relative;animation:idle-shake .3s ease-in-out infinite;">
+      <div style="position:absolute;top:6px;left:7px;right:7px;height:55px;background:#1a2a1a;border:2px solid #333;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:22px;">😡</div>
+      <div style="position:absolute;bottom:22px;left:10px;right:10px;height:10px;background:#111;border-radius:2px;"></div>
+      <div style="position:absolute;bottom:6px;left:0;right:0;text-align:center;font-family:Bangers;font-size:11px;color:#FFD700;">$1.75</div>
+    </div>`;
+    vendDiv.style='position:absolute;left:48%;bottom:28%;transition:left 1s ease;';
+    document.getElementById('csStage').appendChild(vendDiv);
+
+    setCaption("$1.75 in EXACT NICKELS. You've got this.");
+    playVendBeep();
+    csAt(400, ()=>{ boy.style.left='32%'; setCaption("Inserting coins very carefully..."); playBoyChirp(); });
+    csAt(900, ()=>{
+      playCoin();
+      bang('CLINK!', '42%','55%');
+      setCaption("clink... clink... clink...");
+    });
+    csAt(1300, ()=>{ playCoin(); });
+    csAt(1500, ()=>{
+      playCoin();
+      setCaption("...almost...");
+    });
+    csAt(1900, ()=>{
+      playCoin(); playCoin();
+      vendDiv.innerHTML=`<div style="width:62px;height:110px;background:linear-gradient(#C62828,#B71C1C);border:4px solid #111;border-radius:6px 6px 3px 3px;box-shadow:5px 5px 0 #111;position:relative;">
+        <div style="position:absolute;top:6px;left:7px;right:7px;height:55px;background:#1a2a1a;border:2px solid #333;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:22px;">😌</div>
+        <div style="position:absolute;bottom:22px;left:10px;right:10px;height:10px;background:#111;border-radius:2px;"></div>
+        <div style="position:absolute;bottom:6px;left:0;right:0;text-align:center;font-family:Bangers;font-size:11px;color:#00E676;">THANK U</div>
+      </div>`;
+      setCaption("The machine SIGHS with relief...");
+      bang('✓ PAID!', '50%','42%');
+      playVendHappy();
+    });
+    csAt(2400, ()=>{
+      vendDiv.style.left='85%';
+      setCaption("It hands you a free bag of chips and moves aside!");
+      boy.innerHTML=S.boy(1.1,'happy');
+      playBoing();
+    });
+    csAt(3300, done);
+  },
+
+  'machine_kick': (done) => {
+    document.getElementById('csBg').style.background = 'linear-gradient(180deg, #A8D8EA 50%, #5C8A2E 50%, #5C8A2E 68%, #8B7355 68%)';
+    document.getElementById('csLabel').textContent = '👟 DO NOT KICK';
+    clearCutscene();
+    const deco=document.createElement('div'); deco.innerHTML='<div style="position:absolute;bottom:0;width:100%;height:28%;background:#8B7355;"></div><div style="position:absolute;bottom:28%;width:100%;height:20%;background:#5C8A2E;"></div>'; deco.style='position:absolute;inset:0;z-index:-1;'; document.getElementById('csStage').insertBefore(deco,null);
+
+    const boy = placeSVG('cs_boy', S.boy(1.1,'normal'), '20%', '28%', 'transition:left .3s ease;transform-origin:bottom center;');
+    const vendDiv = document.createElement('div');
+    vendDiv.id='cs_vend2';
+    vendDiv.innerHTML=`<div style="width:62px;height:110px;background:linear-gradient(#C62828,#B71C1C);border:4px solid #111;border-radius:6px 6px 3px 3px;box-shadow:5px 5px 0 #111;animation:idle-shake .2s ease-in-out infinite;"></div>`;
+    vendDiv.style='position:absolute;left:42%;bottom:28%;transition:transform 0.8s ease;';
+    document.getElementById('csStage').appendChild(vendDiv);
+
+    setCaption("Nobody tells ME what to do.");
+    playBoyChirp();
+    csAt(500, ()=>{ boy.style.left='30%'; setCaption("Going in for the kick..."); playWhoosh(); });
+    csAt(900, ()=>{
+      boy.style.transform='rotate(-20deg)';
+      setCaption("HYAAAAA!!!");
+      setTimeout(()=>boy.style.transform='',200);
+      bang('KICK!!', '35%','45%');
+      playMetalCrunch();
+    });
+    csAt(1200, ()=>{
+      setCaption("The machine lets out a MECHANICAL SHRIEK!!");
+      vendDiv.style.transform='rotate(85deg) translate(30px, 20px)';
+      bang('SHRIEK!!!', '42%','30%');
+      playVendBeep();
+    });
+    csAt(1800, ()=>{
+      setCaption("200 BAGS OF DORITOS PIN YOU TO THE GROUND.");
+      boy.innerHTML = S.boySquishedFlat();
+      boy.style.left='36%';
+      boy.style.transform='';
+      playDie(); playSplat();
+      bang('CRUNCH!!', '38%','35%');
+      // Doritos rain
+      for(let i=0;i<8;i++) {
+        const d=document.createElement('div');
+        d.style=`position:absolute;left:${25+i*6}%;top:${10+Math.random()*20}%;font-size:20px;animation:confFall ${0.5+Math.random()*0.5}s ease-in both;animation-delay:${i*0.1}s;`;
+        d.textContent='🟠';
+        document.getElementById('csStage').appendChild(d);
+      }
+    });
+    csAt(3200, done);
+  },
+
+  'dragon_solve': (done) => {
+    document.getElementById('csBg').style.background = 'linear-gradient(180deg, #F5F0E8 0%, #F5F0E8 75%, #8B7355 75%)';
+    document.getElementById('csLabel').textContent = '📐 MATH TIME';
+    clearCutscene();
+    const deco=document.createElement('div'); deco.innerHTML='<div style="position:absolute;bottom:0;width:100%;height:25%;background:#8B7355;"></div>'; deco.style='position:absolute;inset:0;z-index:-1;'; document.getElementById('csStage').insertBefore(deco,null);
+
+    // Chalkboard
+    const cb = document.createElement('div');
+    cb.style='position:absolute;top:8px;left:50%;transform:translateX(-50%);width:240px;height:90px;background:#2E7D32;border:5px solid #5D4037;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,.85);font-family:Fredoka One,cursive;font-size:18px;text-align:center;';
+    cb.innerHTML='x² + 5x + 6 = 0<div id="cbAnswer" style="font-size:13px;color:#A5D6A7;margin-top:4px;opacity:0;transition:opacity 0.5s;">(x+2)(x+3)=0 → x=-2,-3</div>';
+    document.getElementById('csStage').appendChild(cb);
+
+    const boy = placeSVG('cs_boy', S.boy(1,'normal'), '8%', '25%', 'transition:left 0.5s ease');
+    const dragon = placeSVG('cs_dragon', S.dragon('angry'), '65%', '18%');
+
+    setCaption("Okay... quadratic formula... (x+2)(x+3)=0...");
+    playBoyChirp();
+    csAt(400, ()=>{ boy.style.left='28%'; playFireBurst(); });
+    csAt(600, ()=>{ setCaption("The dragon breathes fire at someone else..."); });
+    csAt(900, ()=>{
+      // chalk sound
+      playChalkSqueak();
+      setCaption("Writing the solution on the board...");
+      boy.style.animation='writeBoard 1.5s ease-in-out';
+    });
+    csAt(1300, ()=>{ playChalkSqueak(); });
+    csAt(1500, ()=>{ document.getElementById('cbAnswer').style.opacity='1'; });
+    csAt(2000, ()=>{
+      bang('CORRECT!!!', '35%','30%');
+      setCaption("THE DRAGON IS CRYING A TEAR OF PRIDE.");
+      document.getElementById('cs_dragon').innerHTML = S.dragon('proud');
+      playDragonCry();
+    });
+    csAt(2600, ()=>{
+      setCaption("He transforms back into Mr. Henderson!");
+      document.getElementById('cs_dragon').style.animation='dragonTransform 0.8s ease-in-out both';
+      playRoar();
+      setTimeout(()=>{
+        document.getElementById('cs_dragon').innerHTML=S.henderson();
+        document.getElementById('cs_dragon').style.animation='';
+        document.getElementById('cs_dragon').style.right='12%';
+        document.getElementById('cs_dragon').style.bottom='25%';
+      }, 900);
+    });
+    csAt(3300, ()=>{
+      boy.innerHTML=S.boy(1,'happy');
+      setCaption("A GOLD STAR and an A+ for the semester!");
+      bang('A+ !!!', '48%', '38%');
+      playWin();
+    });
+    csAt(4200, done);
+  },
+
+  'scales_die': (done) => {
+    document.getElementById('csBg').style.background = 'linear-gradient(180deg, #F5F0E8 0%, #F5F0E8 70%, #8B7355 70%)';
+    document.getElementById('csLabel').textContent = '✨ SCALES MISTAKE';
+    clearCutscene();
+    const deco=document.createElement('div'); deco.innerHTML='<div style="position:absolute;bottom:0;width:100%;height:25%;background:#8B7355;"></div>'; deco.style='position:absolute;inset:0;z-index:-1;'; document.getElementById('csStage').insertBefore(deco,null);
+
+    const boy = placeSVG('cs_boy', S.boy(1,'normal'), '12%', '25%');
+    const dragon = placeSVG('cs_dragon', S.dragon('angry'), '58%', '18%');
+
+    setCaption("\"Wow Mr. Henderson, your scales look amazing...\"");
+    playBoyChirp();
+    csAt(700, ()=>{
+      document.getElementById('cs_dragon').innerHTML=S.dragon('proud');
+      setCaption("The dragon pauses. \"Are... are they periwinkle...?\"");
+      playDragonCry();
+    });
+    csAt(1500, ()=>{
+      setCaption("It gets EMOTIONAL. Cries a lava tear.");
+      bang('SOB!!', '60%','28%');
+    });
+    csAt(2000, ()=>{
+      setCaption("ACCIDENTAL SNEEZE AT 200 MPH!!! 🤧");
+      bang('ACHOO!!!', '55%','22%');
+      playFireBurst();
+      setTimeout(()=>playWhoosh(), 100);
+      setTimeout(()=>playFallWhistle(), 300);
+      boy.style.animation='playerLaunch 1s ease-in both';
+      // window frame
+      const win=document.createElement('div');
+      win.style='position:absolute;right:0;top:10px;width:70px;height:90px;border:6px solid #8B6239;border-right:none;background:rgba(129,212,250,.3);';
+      document.getElementById('csStage').appendChild(win);
+    });
+    csAt(2600, ()=>{
+      setCaption("You land on a trampoline and DISAPPEAR INTO THE CLOUDS.");
+      bang('BOING!', '30%','40%');
+      playBoing();
+      setTimeout(()=>playDie(), 200);
+    });
+    csAt(3600, done);
+  },
+
+  'alien_snacks': (done) => {
+    document.getElementById('csBg').style.background = 'radial-gradient(ellipse, #0a0a2a, #000)';
+    document.getElementById('csLabel').textContent = '🍟 DIPLOMATIC SNACKING';
+    clearCutscene();
+    // Stars
+    for(let i=0;i<40;i++){const s=document.createElement('div');s.style=`position:absolute;width:${2+Math.random()*3}px;height:${2+Math.random()*3}px;background:#fff;border-radius:50%;left:${Math.random()*100}%;top:${Math.random()*60}%;opacity:${0.3+Math.random()*0.7}`;document.getElementById('csStage').appendChild(s);}
+
+    const boy = placeSVG('cs_boy', S.boy(1.1,'normal'), '12%', '25%', 'transition:all 0.6s ease');
+    const alien = placeSVG('cs_alien', S.alien(), '58%', '22%');
+    const ship = placeSVG('cs_ship', S.spaceship(), '45%', '55%', 'animation:charWalk 1s ease-in-out infinite');
+
+    setCaption("\"Excuse me, do you have snacks on that ship?\"");
+    playAlien(); playShipHum();
+    csAt(700, ()=>{
+      setCaption("The alien blinks ALL SIX EYES.");
+      document.getElementById('cs_alien').style.animation='titlePop .3s ease-in-out infinite';
+      playAlien();
+    });
+    csAt(1400, ()=>{
+      setCaption("\"We have... Pringles.\"");
+      bang('PRINGLES!!', '55%','28%');
+      playNotification();
+    });
+    csAt(2000, ()=>{
+      setCaption("TRACTOR BEAM ENGAGED!!");
+      // beam effect
+      const beam=document.createElement('div');
+      beam.id='cs_beam';
+      beam.style='position:absolute;left:58%;top:20%;width:60px;height:200px;background:linear-gradient(180deg,rgba(100,229,255,.7),rgba(100,229,255,0));clip-path:polygon(20% 0,80% 0,100% 100%,0% 100%);animation:beamDown 0.5s ease-out both;transform-origin:top center;';
+      document.getElementById('csStage').appendChild(beam);
+      boy.style.left='54%';
+      setTimeout(()=>{ boy.style.animation='beamUp 1.2s ease-in both'; }, 300);
+      playTractorBeam();
+    });
+    csAt(3000, ()=>{
+      setCaption("YOU ARE THE GALACTIC SNACK AMBASSADOR. 👑");
+      playWin();
+    });
+    csAt(4000, done);
+  },
+
+  'locker_die': (done) => {
+    document.getElementById('csBg').style.background = 'radial-gradient(ellipse, #0a0a2a, #000)';
+    document.getElementById('csLabel').textContent = '🔒 THE LOCKER PLAN';
+    clearCutscene();
+    for(let i=0;i<40;i++){const s=document.createElement('div');s.style=`position:absolute;width:${2+Math.random()*3}px;height:${2+Math.random()*3}px;background:#fff;border-radius:50%;left:${Math.random()*100}%;top:${Math.random()*100}%;opacity:${0.3+Math.random()*0.7}`;document.getElementById('csStage').appendChild(s);}
+
+    const alien = placeSVG('cs_alien', S.alien(), '58%', '25%');
+
+    // Locker
+    const locker = document.createElement('div');
+    locker.id='cs_locker';
+    locker.innerHTML=`<div style="width:55px;height:90px;background:#607D8B;border:4px solid #111;border-radius:4px;box-shadow:4px 4px 0 #111;display:flex;flex-direction:column;align-items:center;padding-top:8px;"><div style="width:30px;height:35px;background:#546E7A;border:2px solid #111;border-radius:2px;"></div><div style="width:12px;height:12px;background:#FFD600;border-radius:50%;border:2px solid #111;margin-top:6px;"></div><div style="position:absolute;bottom:6px;font-family:Fredoka One;font-size:10px;color:#fff;"></div></div>`;
+    locker.style='position:absolute;left:22%;bottom:30%;transition:all 0.3s ease;';
+    document.getElementById('csStage').appendChild(locker);
+
+    // Floor
+    const floor=document.createElement('div');
+    floor.style='position:absolute;bottom:0;width:100%;height:28%;background:repeating-linear-gradient(90deg,#C8B99A 0,#C8B99A 60px,#B8A990 60px,#B8A990 120px);';
+    document.getElementById('csStage').insertBefore(floor,document.getElementById('csStage').firstChild);
+
+    const boy = placeSVG('cs_boy', S.boy(1,'scared'), '12%', '30%', 'transition:all 0.4s ease');
+
+    setCaption("HIDE IN LOCKER. PERFECT PLAN.");
+    playBoyChirp();
+    csAt(400, ()=>{ boy.style.left='20%'; setCaption("Squeezing in..."); playMetalCrunch(); });
+    csAt(900, ()=>{
+      boy.style.opacity='0';
+      setCaption("The alien finds you in 4 SECONDS. (360-degree vision)");
+      playAlien();
+    });
+    csAt(1500, ()=>{
+      bang('FOUND YOU!', '50%','30%');
+      document.getElementById('cs_alien').style.left='35%';
+      playAlien();
+    });
+    csAt(2000, ()=>{
+      setCaption("IT PICKS UP THE LOCKER AND THROWS IT INTO DEEP SPACE.");
+      locker.style.animation='lockerFly 1.5s ease-in both';
+      playWhoosh();
+      setTimeout(()=>playFallWhistle(), 400);
+      setTimeout(()=>playDie(), 600);
+    });
+    csAt(2800, ()=>{
+      setCaption("Your locker smells terrible in space, too.");
+      bang('INTO SPACE!', '40%','25%');
+      playShipHum();
+    });
+    csAt(3800, done);
+  },
+};
+
+// ═══════════════════════════════════════════════════════
+// GAME FLOW
+// ═══════════════════════════════════════════════════════
+function startGame() {
+  playStart();
+  showScreen('scene1');
+}
+
+function restartGame() {
+  playClick();
+  showScreen('startScreen');
+}
+
+function runCutscene(key, nextFn) {
+  clearCutscene();
+  showScreen('cutscene');
+  setTimeout(()=>{ CUTSCENES[key](nextFn); }, 100);
+}
+
+function choose(scene, opt) {
+  playClick();
+  const routes = {
+    1: {
+      1: ()=>runCutscene('selfie_die', ()=>showDeath(1)),
+      2: ()=>runCutscene('meteor_jump', ()=>showScreen('scene2')),
+    },
+    2: {
+      1: ()=>runCutscene('goose_reason', ()=>showScreen('scene3')),
+      2: ()=>runCutscene('goose_die', ()=>showDeath(2)),
+    },
+    3: {
+      1: ()=>runCutscene('machine_kick', ()=>showDeath(3)),
+      2: ()=>runCutscene('machine_pay', ()=>showScreen('scene4')),
+    },
+    4: {
+      1: ()=>runCutscene('dragon_solve', ()=>showScreen('scene5')),
+      2: ()=>runCutscene('scales_die', ()=>showDeath(4)),
+    },
+    5: {
+      1: ()=>runCutscene('locker_die', ()=>showDeath(5)),
+      2: ()=>runCutscene('alien_snacks', ()=>showWin()),
+    },
+  };
+  routes[scene][opt]();
+}
+
+const DEATHS = {
+  1: { icon: S.boySquishedFlat(), msg: `You pulled out your phone for the perfect shot...<br>The meteor, <strong>deeply offended by your camera flash,</strong> rolled directly over you.<br>Your last photo auto-uploaded with <em>47,000 likes.</em><br>Posthumous influencer. Congrats.` },
+  2: { icon: S.goose(true), msg: `You sprinted in screaming at full volume.<br>The geese, <strong>deeply insulted,</strong> formed a tornado and launched you 40 feet into a fountain.<br><em>A goldfish witnessed everything. He tells no one.</em>` },
+  3: { icon: S.boySquishedFlat(), msg: `You kicked it right in the coin slot.<br>The machine <strong>let out a mechanical SHRIEK,</strong> tipped forward, and pinned you under 200 bags of Doritos.<br><em>Doritos: 1. You: 0.</em>` },
+  4: { icon: S.alien(), msg: `The dragon paused, flustered. <em>"Are... are they periwinkle?"</em><br>It got emotional, cried a lava tear, and <strong>accidentally sneezed you out the window at 200mph.</strong><br>You landed on a trampoline and disappeared into the clouds.<br><em>Technically still ascending.</em>` },
+  5: { icon: `<div style="animation:lockerFly 3s ease-in-out infinite">${S.boy(1,'scared')}</div>`, msg: `You hid in your locker. The alien found you in <strong>4 seconds</strong> — 360-degree vision.<br>It picked up your entire locker, waved goodbye to the cafeteria, and <strong>launched it like a football into deep space.</strong><br><em>Your locker smells terrible in space, too.</em>` },
+};
+
+function showDeath(n) {
+  const d = DEATHS[n];
+  document.getElementById('deathIcon').innerHTML = d.icon;
+  document.getElementById('deathMsg').innerHTML = d.msg;
+  showScreen('deathScreen');
+}
+
+function showWin() {
+  showScreen('winScreen');
+  generateStars('winStars');
+  launchConfetti();
+  // Win scene art
+  const ws = document.getElementById('winScene');
+  ws.innerHTML = `
+    <div style="position:absolute;left:15%;bottom:5px;animation:winDance .4s ease-in-out infinite">${S.boy(1.3,'happy')}</div>
+    <div style="position:absolute;left:35%;bottom:40px;animation:charWalk 1s ease-in-out infinite">${S.spaceship()}</div>
+    <div style="position:absolute;right:10%;bottom:5px;animation:charWalk 1.2s ease-in-out infinite">${S.alien()}</div>
+    <div style="position:absolute;right:8%;bottom:95px;font-family:Bangers,cursive;font-size:16px;color:#FFE500;animation:bubbleBob .5s ease-in-out infinite alternate;">HERE ARE YOUR PRINGLES 🍟</div>
+  `;
+}
+
+function generateStars(containerId) {
+  const c = document.getElementById(containerId);
+  if (!c || c.childElementCount > 0) return;
+  c.style = 'position:absolute;inset:0;z-index:0;pointer-events:none;';
+  for(let i=0;i<80;i++){
+    const s=document.createElement('div'); s.className='star-d';
+    const sz=1+Math.random()*4;
+    s.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*2}s;animation-duration:${1+Math.random()}s;`;
+    c.appendChild(s);
+  }
+}
+
+function launchConfetti() {
+  const c = document.getElementById('confCont');
+  const colors=['#E63946','#FFE500','#00E5FF','#76FF03','#F4831F','#E040FB','#fff'];
+  for(let i=0;i<70;i++){
+    const p=document.createElement('div'); p.className='conf';
+    p.style.cssText=`left:${Math.random()*100}%;background:${colors[i%colors.length]};animation-duration:${2.5+Math.random()*3}s;animation-delay:${Math.random()*2.5}s;transform:rotate(${Math.random()*360}deg);width:${8+Math.random()*12}px;height:${8+Math.random()*10}px;`;
+    c.appendChild(p);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+window.addEventListener('load', setupScenes);
+</script>
+</body>
+</html>
