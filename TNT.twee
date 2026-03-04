@@ -1,3 +1,15 @@
+:: StoryTitle
+Totally Normal Tuesday
+
+:: StoryData
+{
+  "ifid": "B6A0A5C2-1234-4D8A-9999-TNT000000001",
+  "format": "Harlowe",
+  "format-version": "3.3.9",
+  "start": "Start",
+  "zoom": 1
+}
+
 :: Start
 === TOTALLY NORMAL TUESDAY ===
 
@@ -5,8 +17,8 @@ You're walking to school when a GIANT METEOR crashes in front of you.
 
 Do you:
 
-[[Stand there and take a selfie with it|Selfie_Meteor]]
-[[Jump over it like a cool action hero|Jump_Meteor]]
+[[Stand there and take a selfie with it->Selfie_Meteor]]
+[[Jump over it like a cool action hero->Jump_Meteor]]
 
 
 :: Selfie_Meteor
@@ -18,7 +30,7 @@ Your last photo auto-uploads with 47,000 likes.
 
 YOU DIED. (Posthumous influencer, congrats.)
 
-[[*GAME OVER*|Start]]
+[[*GAME OVER*->Start]]
 
 
 :: Jump_Meteor
@@ -32,8 +44,8 @@ Now a PACK OF ANGRY GEESE blocks the sidewalk, honking like maniacs.
 
 Do you:
 
-[[Try to reason with them calmly|Reason_Geese]]
-[[Run straight through them screaming|Runthrough_Geese]]
+[[Try to reason with them calmly->Reason_Geese]]
+[[Run straight through them screaming->Runthrough_Geese]]
 
 
 :: Runthrough_Geese
@@ -47,7 +59,7 @@ A goldfish witnesses everything. He tells no one.
 
 YOU DIED. (Cause of death: disrespecting geese.)
 
-[[*GAME OVER*|Start]]
+[[*GAME OVER*->Start]]
 
 
 :: Reason_Geese
@@ -62,8 +74,8 @@ shaking aggressively and demanding exact change.
 
 Do you:
 
-[[Kick it and tell it to calm down|Kick_Machine]]
-[[Give it exact change|Pay_Machine]]
+[[Kick it and tell it to calm down->Kick_Machine]]
+[[Give it exact change->Pay_Machine]]
 
 
 :: Kick_Machine
@@ -76,7 +88,7 @@ Doritos: 1. You: 0.
 
 YOU DIED. (Nacho average ending.)
 
-[[*GAME OVER*|Start]]
+[[*GAME OVER*->Start]]
 
 
 :: Pay_Machine
@@ -90,8 +102,8 @@ and is demanding everyone solve a quadratic equation or be roasted.
 
 Do you:
 
-[[Actually solve the equation|Solve_Equation]]
-[[Compliment the dragon's scales to distract it|Compliment_Dragon]]
+[[Actually solve the equation->Solve_Equation]]
+[[Compliment the dragon's scales to distract it->Compliment_Dragon]]
 
 
 :: Compliment_Dragon
@@ -104,7 +116,7 @@ You land on a trampoline, bounce once, and disappear into the clouds.
 
 YOU DIED. (Technically still ascending.)
 
-[[*GAME OVER*|Start]]
+[[*GAME OVER*->Start]]
 
 
 :: Solve_Equation
@@ -122,8 +134,8 @@ The alien points at you specifically and says "YOU. COME."
 
 Do you:
 
-[[Just bolt and hide in your locker|Hide_Locker]]
-[[Ask if they have good snacks on the ship first|Ask_Snacks]]
+[[Just bolt and hide in your locker->Hide_Locker]]
+[[Ask if they have good snacks on the ship first->Ask_Snacks]]
 
 
 :: Hide_Locker
@@ -136,7 +148,7 @@ and launches it like a football into deep space.
 
 YOU DIED. (Your locker smells terrible in space too.)
 
-[[*GAME OVER*|Start]]
+[[*GAME OVER*->Start]]
 
 
 :: Ask_Snacks
@@ -152,4 +164,4 @@ You never have to do homework again.
 
 ~~~ YOU WIN! CONGRATULATIONS! ~~~
 
-[[Play Again|Start]]
+[[Play Again->Start]]
