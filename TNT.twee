@@ -5,8 +5,8 @@ You're walking to school when a GIANT METEOR crashes in front of you.
 
 Do you:
 
-[[Stand there and take a selfie with it->Selfie_Meteor]]
-[[Jump over it like a cool action hero->Jump_Meteor]]
+[[Stand there and take a selfie with it|Selfie_Meteor]]
+[[Jump over it like a cool action hero|Jump_Meteor]]
 
 
 :: Selfie_Meteor
@@ -18,7 +18,7 @@ Your last photo auto-uploads with 47,000 likes.
 
 YOU DIED. (Posthumous influencer, congrats.)
 
-[[*GAME OVER*->Start]]
+[[*GAME OVER*|Start]]
 
 
 :: Jump_Meteor
@@ -32,8 +32,8 @@ Now a PACK OF ANGRY GEESE blocks the sidewalk, honking like maniacs.
 
 Do you:
 
-[[Try to reason with them calmly->Reason_Geese]]
-[[Run straight through them screaming->Runthrough_Geese]]
+[[Try to reason with them calmly|Reason_Geese]]
+[[Run straight through them screaming|Runthrough_Geese]]
 
 
 :: Runthrough_Geese
@@ -47,7 +47,7 @@ A goldfish witnesses everything. He tells no one.
 
 YOU DIED. (Cause of death: disrespecting geese.)
 
-[[*GAME OVER*->Start]]
+[[*GAME OVER*|Start]]
 
 
 :: Reason_Geese
@@ -57,54 +57,54 @@ The lead goose stares at you for 10 seconds... then bows.
 
 They form a guard of honor and escort you past.
 
-You arrive at school but a ROGUE VENDING MACHINE is blocking the door,  
+You arrive at school but a ROGUE VENDING MACHINE is blocking the door,
 shaking aggressively and demanding exact change.
 
 Do you:
 
-[[Kick it and tell it to calm down->Kick_Machine]]
-[[Give it exact change->Pay_Machine]]
+[[Kick it and tell it to calm down|Kick_Machine]]
+[[Give it exact change|Pay_Machine]]
 
 
 :: Kick_Machine
 You kick the machine right in the coin slot.
 
-It lets out a mechanical SHRIEK, tips forward,  
+It lets out a mechanical SHRIEK, tips forward,
 and pins you to the ground with the full force of 200 bags of Doritos.
 
 Doritos: 1. You: 0.
 
 YOU DIED. (Nacho average ending.)
 
-[[*GAME OVER*->Start]]
+[[*GAME OVER*|Start]]
 
 
 :: Pay_Machine
 You calmly insert $1.75 in exact nickels.
 
-The machine sighs in relief, hands you a free bag of chips,  
+The machine sighs in relief, hands you a free bag of chips,
 and rolls itself politely out of the way.
 
-Inside school, your MATH TEACHER has transformed into a DRAGON  
+Inside school, your MATH TEACHER has transformed into a DRAGON
 and is demanding everyone solve a quadratic equation or be roasted.
 
 Do you:
 
-[[Actually solve the equation->Solve_Equation]]
-[[Compliment the dragon's scales to distract it->Compliment_Dragon]]
+[[Actually solve the equation|Solve_Equation]]
+[[Compliment the dragon's scales to distract it|Compliment_Dragon]]
 
 
 :: Compliment_Dragon
 The dragon pauses, flustered. "Are... are they periwinkle?"
 
-It gets emotional, cries a single lava tear, and accidentally  
+It gets emotional, cries a single lava tear, and accidentally
 sneezes you out the window at 200 mph.
 
 You land on a trampoline, bounce once, and disappear into the clouds.
 
 YOU DIED. (Technically still ascending.)
 
-[[*GAME OVER*->Start]]
+[[*GAME OVER*|Start]]
 
 
 :: Solve_Equation
@@ -122,8 +122,8 @@ The alien points at you specifically and says "YOU. COME."
 
 Do you:
 
-[[Just bolt and hide in your locker->Hide_Locker]]
-[[Ask if they have good snacks on the ship first->Ask_Snacks]]
+[[Just bolt and hide in your locker|Hide_Locker]]
+[[Ask if they have good snacks on the ship first|Ask_Snacks]]
 
 
 :: Hide_Locker
@@ -131,12 +131,12 @@ You sprint to your locker and squeeze inside.
 
 The alien finds you in 4 seconds because you forgot it has 360-degree vision.
 
-It picks up the entire locker, waves goodbye to the cafeteria,  
+It picks up the entire locker, waves goodbye to the cafeteria,
 and launches it like a football into deep space.
 
 YOU DIED. (Your locker smells terrible in space too.)
 
-[[*GAME OVER*->Start]]
+[[*GAME OVER*|Start]]
 
 
 :: Ask_Snacks
@@ -152,4 +152,4 @@ You never have to do homework again.
 
 ~~~ YOU WIN! CONGRATULATIONS! ~~~
 
-[[Play Again->Start]]
+[[Play Again|Start]]
