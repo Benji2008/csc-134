@@ -6,14 +6,18 @@ Totally Normal Tuesday
   "ifid": "B6A0A5C2-1234-4D8A-9999-TNT000000001",
   "format": "Harlowe",
   "format-version": "3.3.9",
-  "start": "Start",
-  "zoom": 1
+  "start": "Start"
 }
 
 :: Start
+(set: $Meteor to false)
+(set: $Alive to true)
+
 === TOTALLY NORMAL TUESDAY ===
 
 You're walking to school when a GIANT METEOR crashes in front of you.
+
+(set: $Meteor to true)
 
 Do you:
 
@@ -26,6 +30,8 @@ You pull out your phone for the perfect shot...
 
 The meteor, offended by your flash, rolls over and flattens you.
 
+(set: $Alive to false)
+
 Your last photo auto-uploads with 47,000 likes.
 
 YOU DIED. (Posthumous influencer, congrats.)
@@ -36,11 +42,9 @@ YOU DIED. (Posthumous influencer, congrats.)
 :: Jump_Meteor
 You leap over the meteor doing a perfect triple backflip.
 
-A passing pigeon witnesses it and starts slow-clapping.
-
 You land safely on the other side.
 
-Now a PACK OF ANGRY GEESE blocks the sidewalk, honking like maniacs.
+Now a PACK OF ANGRY GEESE blocks the sidewalk.
 
 Do you:
 
@@ -49,13 +53,11 @@ Do you:
 
 
 :: Runthrough_Geese
-You sprint into the flock screaming at full volume.
+You sprint into the flock screaming.
 
-The geese, deeply insulted, form a tornado around you.
+The geese form a tornado around you.
 
-You are launched 40 feet into the air and land in a fountain.
-
-A goldfish witnesses everything. He tells no one.
+(set: $Alive to false)
 
 YOU DIED. (Cause of death: disrespecting geese.)
 
@@ -65,26 +67,22 @@ YOU DIED. (Cause of death: disrespecting geese.)
 :: Reason_Geese
 You sit down cross-legged and say "I hear you, friends."
 
-The lead goose stares at you for 10 seconds... then bows.
+The lead goose bows.
 
-They form a guard of honor and escort you past.
-
-You arrive at school but a ROGUE VENDING MACHINE is blocking the door,
-shaking aggressively and demanding exact change.
+You arrive at school but a ROGUE VENDING MACHINE blocks the door.
 
 Do you:
 
-[[Kick it and tell it to calm down->Kick_Machine]]
+[[Kick it->Kick_Machine]]
 [[Give it exact change->Pay_Machine]]
 
 
 :: Kick_Machine
-You kick the machine right in the coin slot.
+You kick the machine.
 
-It lets out a mechanical SHRIEK, tips forward,
-and pins you to the ground with the full force of 200 bags of Doritos.
+It tips forward and crushes you.
 
-Doritos: 1. You: 0.
+(set: $Alive to false)
 
 YOU DIED. (Nacho average ending.)
 
@@ -92,76 +90,62 @@ YOU DIED. (Nacho average ending.)
 
 
 :: Pay_Machine
-You calmly insert $1.75 in exact nickels.
+You calmly insert exact change.
 
-The machine sighs in relief, hands you a free bag of chips,
-and rolls itself politely out of the way.
+The machine rolls away politely.
 
-Inside school, your MATH TEACHER has transformed into a DRAGON
-and is demanding everyone solve a quadratic equation or be roasted.
+Inside, your MATH TEACHER has turned into a DRAGON.
 
 Do you:
 
-[[Actually solve the equation->Solve_Equation]]
-[[Compliment the dragon's scales to distract it->Compliment_Dragon]]
+[[Solve the equation->Solve_Equation]]
+[[Compliment the dragon->Compliment_Dragon]]
 
 
 :: Compliment_Dragon
-The dragon pauses, flustered. "Are... are they periwinkle?"
+The dragon blushes.
 
-It gets emotional, cries a single lava tear, and accidentally
-sneezes you out the window at 200 mph.
+It sneezes lava and launches you out the window.
 
-You land on a trampoline, bounce once, and disappear into the clouds.
+(set: $Alive to false)
 
-YOU DIED. (Technically still ascending.)
+YOU DIED. (Still ascending.)
 
 [[*GAME OVER*->Start]]
 
 
 :: Solve_Equation
-You walk to the board and write out the full solution flawlessly.
+You flawlessly solve the quadratic equation.
 
-The dragon sheds a single tear of pride.
-
-"Finally," it whispers. It transforms back into Mr. Henderson.
-
-He gives you a gold star and an A+ for the semester.
+The dragon transforms back into your teacher.
 
 At lunch, an ALIEN SPACESHIP lands in the cafeteria.
 
-The alien points at you specifically and says "YOU. COME."
-
 Do you:
 
-[[Just bolt and hide in your locker->Hide_Locker]]
-[[Ask if they have good snacks on the ship first->Ask_Snacks]]
+[[Hide in your locker->Hide_Locker]]
+[[Ask about snacks first->Ask_Snacks]]
 
 
 :: Hide_Locker
-You sprint to your locker and squeeze inside.
+You hide in your locker.
 
-The alien finds you in 4 seconds because you forgot it has 360-degree vision.
+The alien launches it into space.
 
-It picks up the entire locker, waves goodbye to the cafeteria,
-and launches it like a football into deep space.
+(set: $Alive to false)
 
-YOU DIED. (Your locker smells terrible in space too.)
+YOU DIED. (Space locker edition.)
 
 [[*GAME OVER*->Start]]
 
 
 :: Ask_Snacks
-The alien blinks all six of its eyes. "We have... Pringles."
+The alien says, "We have Pringles."
 
-You are immediately teleported aboard.
+You are crowned Galactic Snack Ambassador.
 
-Turns out the whole universe has been waiting to meet you.
+(set: $Alive to true)
 
-They crown you Galactic Snack Ambassador.
-
-You never have to do homework again.
-
-~~~ YOU WIN! CONGRATULATIONS! ~~~
+~~~ YOU WIN! ~~~
 
 [[Play Again->Start]]
