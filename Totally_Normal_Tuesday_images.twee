@@ -1,0 +1,191 @@
+:: StoryTitle
+Totally Normal Tuesday
+
+
+:: StoryData
+{
+  "ifid": "B6A0A5C2-1234-4D8A-9999-TNT000000001",
+  "format": "Harlowe",
+  "format-version": "3.3.9",
+  "start": "Start",
+  "zoom": 1
+}
+
+
+:: Start {"position":"225,175","size":"100,100"}
+=== TOTALLY NORMAL TUESDAY ===
+
+<img src="https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?w=600" style="width:100%;max-width:500px;border-radius:8px;display:block;margin:1em auto;">
+
+You're walking to school when a GIANT METEOR crashes in front of you.
+
+Do you:
+
+[[Stand there and take a selfie with it->Selfie-Meteor]]
+[[Jump over it like a cool action hero->Jump-Meteor]]
+
+
+:: Selfie-Meteor {"position":"775,475","size":"100,100"}
+<img src="https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=600" style="width:100%;max-width:500px;border-radius:8px;display:block;margin:1em auto;">
+
+You pull out your phone for the perfect shot...
+
+The meteor, offended by your flash, rolls over and flattens you.
+
+Your last photo auto-uploads with 47,000 likes.
+
+YOU DIED. (Posthumous influencer, congrats.)
+
+[[*GAME OVER*->Start]]
+
+
+:: Jump-Meteor {"position":"950,350","size":"100,100"}
+<img src="https://images.unsplash.com/photo-1601836860041-41e9c6b0a596?w=600" style="width:100%;max-width:500px;border-radius:8px;display:block;margin:1em auto;">
+
+You leap over the meteor doing a perfect triple backflip.
+
+A passing pigeon witnesses it and starts slow-clapping.
+
+You land safely on the other side.
+
+Now a PACK OF ANGRY GEESE blocks the sidewalk, honking like maniacs.
+
+Do you:
+
+[[Try to reason with them calmly->Reason-Geese]]
+[[Run straight through them screaming->Runthrough-Geese]]
+
+
+:: Reason-Geese {"position":"1325,275","size":"100,100"}
+<img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600" style="width:100%;max-width:500px;border-radius:8px;display:block;margin:1em auto;">
+
+You sit down cross-legged and say "I hear you, friends."
+
+The lead goose stares at you for 10 seconds... then bows.
+
+They form a guard of honor and escort you past.
+
+You arrive at school but a ROGUE VENDING MACHINE is blocking the door,
+shaking aggressively and demanding exact change.
+
+Do you:
+
+[[Kick it and tell it to calm down->Kick-Machine]]
+[[Give it exact change->Pay-Machine]]
+
+
+:: Runthrough-Geese {"position":"1175,550","size":"100,100"}
+<img src="https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=600" style="width:100%;max-width:500px;border-radius:8px;display:block;margin:1em auto;">
+
+You sprint into the flock screaming at full volume.
+
+The geese, deeply insulted, form a tornado around you.
+
+You are launched 40 feet into the air and land in a fountain.
+
+A goldfish witnesses everything. He tells no one.
+
+YOU DIED. (Cause of death: disrespecting geese.)
+
+[[*GAME OVER*->Start]]
+
+
+:: Kick-Machine {"position":"300,525","size":"100,100"}
+<img src="https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=600" style="width:100%;max-width:500px;border-radius:8px;display:block;margin:1em auto;">
+
+You kick the machine right in the coin slot.
+
+It lets out a mechanical SHRIEK, tips forward,
+and pins you to the ground with the full force of 200 bags of Doritos.
+
+Doritos: 1. You: 0.
+
+YOU DIED. (Nacho average ending.)
+
+[[*GAME OVER*->Start]]
+
+
+:: Pay-Machine {"position":"925,725","size":"100,100"}
+<img src="https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=600" style="width:100%;max-width:500px;border-radius:8px;display:block;margin:1em auto;">
+
+You calmly insert $1.75 in exact nickels.
+
+The machine sighs in relief, hands you a free bag of chips,
+and rolls itself politely out of the way.
+
+Inside school, your MATH TEACHER has transformed into a DRAGON
+and is demanding everyone solve a quadratic equation or be roasted.
+
+Do you:
+
+[[Actually solve the equation->Solve-Equation]]
+[[Compliment the dragon's scales to distract it->Compliment-Dragon]]
+
+
+:: Solve-Equation {"position":"1200,350","size":"100,100"}
+<img src="https://images.unsplash.com/photo-1509228468518-180dd4864904?w=600" style="width:100%;max-width:500px;border-radius:8px;display:block;margin:1em auto;">
+
+You walk to the board and write out the full solution flawlessly.
+
+The dragon sheds a single tear of pride.
+
+"Finally," it whispers. It transforms back into Mr. Henderson.
+
+He gives you a gold star and an A+ for the semester.
+
+At lunch, an ALIEN SPACESHIP lands in the cafeteria.
+
+The alien points at you specifically and says "YOU. COME."
+
+Do you:
+
+[[Just bolt and hide in your locker->Hide-Locker]]
+[[Ask if they have good snacks on the ship first->Ask-Snacks]]
+
+
+:: Compliment-Dragon {"position":"550,675","size":"100,100"}
+<img src="https://images.unsplash.com/photo-1577493340887-b7bfff550145?w=600" style="width:100%;max-width:500px;border-radius:8px;display:block;margin:1em auto;">
+
+The dragon pauses, flustered. "Are... are they periwinkle?"
+
+It gets emotional, cries a single lava tear, and accidentally
+sneezes you out the window at 200 mph.
+
+You land on a trampoline, bounce once, and disappear into the clouds.
+
+YOU DIED. (Technically still ascending.)
+
+[[*GAME OVER*->Start]]
+
+
+:: Hide-Locker {"position":"950,550","size":"100,100"}
+<img src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=600" style="width:100%;max-width:500px;border-radius:8px;display:block;margin:1em auto;">
+
+You sprint to your locker and squeeze inside.
+
+The alien finds you in 4 seconds because you forgot it has 360-degree vision.
+
+It picks up the entire locker, waves goodbye to the cafeteria,
+and launches it like a football into deep space.
+
+YOU DIED. (Your locker smells terrible in space too.)
+
+[[*GAME OVER*->Start]]
+
+
+:: Ask-Snacks {"position":"50,375","size":"100,100"}
+<img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600" style="width:100%;max-width:500px;border-radius:8px;display:block;margin:1em auto;">
+
+The alien blinks all six of its eyes. "We have... Pringles."
+
+You are immediately teleported aboard.
+
+Turns out the whole universe has been waiting to meet you.
+
+They crown you Galactic Snack Ambassador.
+
+You never have to do homework again.
+
+~~~ YOU WIN! CONGRATULATIONS! ~~~
+
+[[Play Again->Start]]
