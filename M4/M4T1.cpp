@@ -19,7 +19,6 @@ int main() {
     while (num <= MAX) {
         squared = num * num;
         cout << num << "\t" << squared << endl; // print num n square
-        num++; // next number   
-        
+        num++; // next number  
     }
 }
