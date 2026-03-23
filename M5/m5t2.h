@@ -11,7 +11,6 @@ int square(int num) {
     int answer = num * num;
     return answer;
 }
-
 void print_table_line(int first, int second) {
     // input: two numbers
     // effect: prints a line with both numbers
@@ -36,5 +35,27 @@ void write_squares_table(string filename, int start, int finish){
     }
 
 }
+
+void read_squares_table(string filename ) {
+    //INPUTE: file name to open
+    // Effects: print out the data
+    ifstream infile;
+    infile.open(filename);
+    if (infile) {
+        // file is ok
+        int num1, num2;
+        while (infile >> num1 >> num2) {
+            // read two numbers at a time
+            cout << num1 << "\t" << num2 << endl;
+        }
+
+    }
+    else {
+        // file cant open
+        cout << "error file could not open" << filename << endl;
+        return;
+    }
+
+}   
 
 #endif // M5T2_H_INCLUDED

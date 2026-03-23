@@ -21,6 +21,7 @@ int main()
     //next write to a file
     string filename = "squares.txt";
     write_squares_table(filename, start, finish);
+    read_squares_table(filename);
 
     return 0;
 }
