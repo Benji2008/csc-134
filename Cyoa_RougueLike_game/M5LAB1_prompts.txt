@@ -1,0 +1,52 @@
+M5LAB1_prompts.txt
+==========================================
+PROMPTS USED FOR AI ASSISTANCE - DELVE CYOA
+==========================================
+
+PROMPT 1 (Initial Request):
+"Make a CYOA game but with roguelike features in C++ following the m5lab1 lab structure."
+
+PROMPT 2 (Design Decisions discussed with AI):
+"The game should include:
+- A player struct with stats: HP, ATK, DEF, Gold, Floor, XP, Level
+- Class selection (Warrior, Rogue, Scholar) with different starting stats
+- Multiple random encounters per floor: monsters, merchants, traps, treasure, shrines, boss
+- Turn-based dice-roll combat with leveling up
+- Permadeath (if HP reaches 0, game over and restart)
+- Item system: Torch, Rope, Healing Potion - each affecting encounters differently
+- 5 floors with a boss fight every 3rd floor
+- Input validation via get_choice(int max) that loops until valid input"
+
+PROMPT 3 (Structure decisions):
+"Follow the lab's structure:
+- Function prototypes above main()
+- Function definitions below main()
+- A main_menu() entry point
+- Separate functions for each story branch
+- get_choice() handles all input validation"
+
+==========================================
+ROGUELIKE FEATURES IMPLEMENTED:
+==========================================
+1. PERMADEATH       - Die = restart from scratch
+2. RANDOM EVENTS    - roll_dice() randomizes outcomes
+3. STAT PROGRESSION - Level up system (XP -> ATK/HP boost)
+4. FLOOR SYSTEM     - 5 floors, each harder than the last
+5. CLASS CHOICE     - Warrior / Rogue / Scholar
+6. ITEM SYSTEM      - Torch, Rope, Potion affect gameplay
+7. BOSS ENCOUNTERS  - Every 3rd floor has a boss
+8. MERCHANT SHOP    - Buy items with earned gold
+9. INPUT VALIDATION - get_choice() loops on bad input
+
+==========================================
+STORY BRANCH FUNCTIONS (Lab Requirement):
+==========================================
+- path_left_corridor()   -> dark/dangerous path
+- path_right_corridor()  -> merchant or ambush
+- path_center_stairs()   -> progress to next floor
+- encounter_monster()    -> combat encounter
+- encounter_merchant()   -> shop encounter
+- encounter_trap()       -> item-dependent trap
+- encounter_treasure()   -> loot or mimic!
+- encounter_shrine()     -> trade gold/HP for buffs
+- encounter_boss()       -> floor boss fight
