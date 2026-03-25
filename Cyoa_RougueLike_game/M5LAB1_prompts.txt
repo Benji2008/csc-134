@@ -50,3 +50,7 @@ STORY BRANCH FUNCTIONS (Lab Requirement):
 - encounter_treasure()   -> loot or mimic!
 - encounter_shrine()     -> trade gold/HP for buffs
 - encounter_boss()       -> floor boss fight
+
+=============================================
+PROMPT 4 (put all functions into the header file)
+=============================================
