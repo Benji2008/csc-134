@@ -54,3 +54,62 @@ STORY BRANCH FUNCTIONS (Lab Requirement):
 =============================================
 PROMPT 4 (put all functions into the header file)
 =============================================
+
+=============================================
+Prompt 5
+
+can we change instead of base atk we make weapons our way of damage but we can only carry 1 two handed weapon or 2 1 handed weapons and maybe make a chance to evade atks based off speed also could add stuff like armor headgear chest pants boots yk and accessory's make them kinda like binding of isaac but for now keep the game a cpp codespace runable game...
+thank you
+
+2:15 PM
+Let me read the current header first, then plan the overhaul.
+
+
+Reading current header file
+Reading current header file
+Got everything. This is a big overhaul — I'll now build the full updated header with weapons, armor slots, speed/evasion, and BoI-style accessories.
+
+
+Created 2 files, ran a command
+Created 2 files, ran a command
+Now let's create the slim main.cpp and do a compile test:
+
+
+Created a file, ran a command
+Created a file, ran a command
+Clean compile, zero warnings. Let's copy main.cpp to outputs too:
+
+
+Ran a command, read a file
+Ran a command, read a file
+Compiled clean with zero warnings. Here's a breakdown of everything that changed:
+
+Weapons
+
+Base attack stat is gone — all damage now rolls from your equipped weapon(s)
+14 weapons in the pool across 1H and 2H types
+1H: fill main slot first, then off-hand automatically (dual wield = off-hand deals 60% of its roll)
+2H: replaces both slots, hits much harder but locks you out of dual wielding
+Each weapon also has a speed_mod that raises or lowers your evasion
+Armor — 4 slots
+
+Head, Chest, Pants, Boots — all independently equippable
+Each piece has DEF, SPD mod, and sometimes a small HP bonus
+16 pieces in the pool ranging from light/fast to heavy/slow
+Speed & Evasion
+
+Every character has a base speed stat (Warrior 8, Scholar 10, Rogue 14)
+Evasion % = SPD / (SPD + 10) * 100, hard capped 5–60%
+Checked each enemy attack round — a dodge negates all damage that hit
+Heavy armor and slow weapons drag SPD down; the Featherstone accessory ignores all penalties
+Accessories — 2 slots, BoI-style
+
+14 unique accessories with weird synergy effects:
+Thorn Ring — 25% of damage taken reflects back
+Vampire Fang — heal 3 HP on every kill
+Lucky Coin — +1 to every single dice roll in the game
+Cursed Idol — deal +4 damage but take +2 per hit
+Featherstone — completely ignore speed penalties
+Phantom Ring — Weightless + Lucky stacked
+...and 8 more found in treasure chests and shrines
+====================================================
