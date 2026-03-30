@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISAAC DELVE</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #12121a;
+    --bg3: #1a1a26;
+    --panel: #0d0d18;
+    --border: #2a2a44;
+    --border2: #3a3a60;
+    --gold: #f5c542;
+    --gold2: #d4a017;
+    --red: #e03030;
+    --red2: #ff5555;
+    --green: #44cc66;
+    --green2: #22aa44;
+    --blue: #4488ff;
+    --purple: #aa44ff;
+    --text: #c8c8e0;
+    --text2: #8888aa;
+    --white: #eeeeff;
+    --hp-color: #e03030;
+    --xp-color: #44cc66;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Dungeon tile background */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 31px, rgba(30,30,50,0.4) 31px, rgba(30,30,50,0.4) 32px),
+      repeating-linear-gradient(90deg, transparent, transparent 31px, rgba(30,30,50,0.4) 31px, rgba(30,30,50,0.4) 32px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #app {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 16px;
+    min-height: 100vh;
+  }
+
+  /* === SCREENS === */
+  .screen { display: none; animation: fadeIn 0.3s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* === TITLE SCREEN === */
+  .title-art {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(10px, 2vw, 16px);
+    color: var(--gold);
+    text-shadow: 0 0 20px #f5c54288, 0 0 40px #f5c54244;
+    text-align: center;
+    line-height: 1.6;
+    padding: 24px 0 8px;
+    letter-spacing: 2px;
+    animation: flicker 4s infinite;
+  }
+  @keyframes flicker {
+    0%,95%,100% { opacity:1; }
+    96% { opacity:0.8; }
+    97% { opacity:1; }
+    98% { opacity:0.7; }
+  }
+
+  .title-sub {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(6px, 1.2vw, 9px);
+    color: var(--text2);
+    text-align: center;
+    letter-spacing: 3px;
+    margin-bottom: 32px;
+  }
+
+  /* === PANELS === */
+  .panel {
+    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--border2), transparent);
+  }
+  .panel-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(8px, 1.5vw, 11px);
+    color: var(--gold);
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px #f5c54244;
+  }
+
+  /* === MENU BUTTONS === */
+  .menu-btn {
+    display: block;
+    width: 100%;
+    padding: 14px 20px;
+    margin-bottom: 10px;
+    background: var(--bg2);
+    border: 2px solid var(--border);
+    color: var(--text);
+    font-family: 'VT323', monospace;
+    font-size: 22px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+    letter-spacing: 1px;
+    position: relative;
+    overflow: hidden;
+  }
+  .menu-btn::before {
+    content: '▶';
+    color: var(--gold);
+    margin-right: 10px;
+    opacity: 0;
+    transition: opacity 0.15s, transform 0.15s;
+    display: inline-block;
+    transform: translateX(-8px);
+  }
+  .menu-btn:hover {
+    border-color: var(--gold);
+    color: var(--white);
+    background: var(--bg3);
+    text-shadow: 0 0 8px rgba(245,197,66,0.3);
+  }
+  .menu-btn:hover::before { opacity: 1; transform: translateX(0); }
+  .menu-btn:active { transform: scale(0.98); }
+  .menu-btn.disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* === CLASS CARDS === */
+  .class-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+  }
+  .class-card {
+    background: var(--bg2);
+    border: 2px solid var(--border);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .class-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+  .class-card .class-icon { font-size: 40px; margin-bottom: 8px; display: block; }
+  .class-card .class-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+  .class-card .class-desc { color: var(--text2); font-size: 18px; line-height: 1.4; }
+  .class-card .class-stats { margin-top: 10px; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 17px; padding: 2px 0; }
+  .stat-val { color: var(--green); }
+
+  /* === HUD === */
+  #hud {
+    background: var(--panel);
+    border: 2px solid var(--border2);
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .hud-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--gold);
+    grid-column: 1/-1;
+    margin-bottom: 4px;
+  }
+  .bar-wrap { margin-bottom: 6px; }
+  .bar-label { font-size: 16px; color: var(--text2); margin-bottom: 2px; }
+  .bar-track {
+    height: 16px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    transition: width 0.4s ease;
+    position: relative;
+  }
+  .bar-fill.hp { background: linear-gradient(90deg, var(--red), var(--red2)); }
+  .bar-fill.xp { background: linear-gradient(90deg, var(--green2), var(--green)); }
+  .bar-text {
+    position: absolute;
+    right: 4px; top: 0; bottom: 0;
+    display: flex; align-items: center;
+    font-size: 14px;
+    color: var(--white);
+    text-shadow: 1px 1px 2px #000;
+  }
+  .hud-stats { display: flex; flex-wrap: wrap; gap: 8px 16px; grid-column: 1/-1; }
+  .hud-stat { font-size: 17px; }
+  .hud-stat span { color: var(--gold); }
+
+  /* === FLOOR / ROOM === */
+  .room-desc {
+    font-size: 19px;
+    color: var(--text2);
+    font-style: italic;
+    padding: 10px 0 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .path-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .path-btn {
+    background: var(--bg2);
+    border: 2px solid var(--border);
+    padding: 14px;
+    cursor: pointer;
+    color: var(--text);
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .path-btn .path-icon { font-size: 28px; display: block; margin-bottom: 4px; }
+  .path-btn .path-name { color: var(--white); display: block; }
+  .path-btn .path-hint { color: var(--text2); font-size: 16px; display: block; }
+  .path-btn:hover { border-color: var(--gold); background: var(--bg3); }
+  .path-btn.danger:hover { border-color: var(--red); }
+  .path-btn.safe:hover { border-color: var(--green); }
+
+  /* === COMBAT === */
+  .combat-area {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .combatant {
+    background: var(--bg2);
+    border: 2px solid var(--border);
+    padding: 14px;
+    text-align: center;
+  }
+  .combatant.enemy { border-color: var(--red); }
+  .combatant.player-side { border-color: var(--blue); }
+  .combatant-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    margin-bottom: 8px;
+    color: var(--gold);
+  }
+  .enemy-art {
+    font-size: 48px;
+    line-height: 1;
+    margin: 8px 0;
+    filter: drop-shadow(0 0 12px #e0303066);
+    animation: enemyBob 2s ease-in-out infinite;
+  }
+  @keyframes enemyBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+  .combatant.hurt { animation: hurt 0.3s ease; }
+  @keyframes hurt { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+  .log-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    height: 140px;
+    overflow-y: auto;
+    font-size: 18px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+    scroll-behavior: smooth;
+  }
+  .log-box p { padding: 1px 0; }
+  .log-box p.hit { color: var(--red2); }
+  .log-box p.heal { color: var(--green); }
+  .log-box p.evade { color: var(--blue); }
+  .log-box p.item { color: var(--purple); }
+  .log-box p.gold { color: var(--gold); }
+  .log-box p.sys { color: var(--text2); }
+  .log-box p.boss { color: var(--red); font-family: 'Press Start 2P', monospace; font-size: 10px; }
+
+  .combat-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .action-btn {
+    background: var(--bg2);
+    border: 2px solid var(--border);
+    color: var(--text);
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    padding: 12px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .action-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--white); }
+  .action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .action-btn .act-icon { font-size: 24px; display: block; }
+
+  /* === EQUIPMENT SCREEN === */
+  .equip-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  .equip-slot {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    font-size: 17px;
+  }
+  .equip-slot-label { color: var(--text2); font-size: 15px; margin-bottom: 4px; }
+  .equip-slot-val { color: var(--white); }
+  .equip-slot-val.filled { color: var(--green); }
+  .equip-slot-val.empty { color: var(--text2); }
+
+  /* === ITEM FOUND === */
+  .item-found {
+    background: var(--bg2);
+    border: 2px solid var(--purple);
+    padding: 16px;
+    text-align: center;
+    margin: 12px 0;
+    animation: itemGlow 1s ease infinite alternate;
+  }
+  @keyframes itemGlow { from{box-shadow:0 0 8px #aa44ff44} to{box-shadow:0 0 20px #aa44ff88} }
+  .item-found .item-icon { font-size: 36px; }
+  .item-found .item-name { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--gold); margin: 6px 0; }
+  .item-found .item-desc { color: var(--text2); font-size: 17px; }
+
+  /* === MERCHANT === */
+  .shop-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  .shop-item {
+    background: var(--bg2);
+    border: 2px solid var(--border);
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .shop-item:hover { border-color: var(--gold); }
+  .shop-item .shop-icon { font-size: 30px; }
+  .shop-item .shop-name { color: var(--white); font-size: 18px; }
+  .shop-item .shop-cost { color: var(--gold); font-size: 17px; margin-top: 4px; }
+  .shop-item.cant-afford { opacity: 0.4; cursor: not-allowed; }
+
+  /* === SHRINE === */
+  .shrine-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* === BOSS INTRO === */
+  .boss-intro {
+    text-align: center;
+    padding: 20px;
+    border: 2px solid var(--red);
+    background: #1a0000;
+    margin-bottom: 16px;
+    animation: bossAlert 0.5s ease 3;
+  }
+  @keyframes bossAlert { 0%,100%{border-color:var(--red)} 50%{border-color:#ff8888} }
+  .boss-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    color: var(--red2);
+    text-shadow: 0 0 20px var(--red);
+  }
+
+  /* === LEVELUP === */
+  .levelup-banner {
+    background: linear-gradient(135deg, #1a1a00, #2a2200);
+    border: 2px solid var(--gold);
+    padding: 12px;
+    text-align: center;
+    margin: 8px 0;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: var(--gold);
+    animation: levelPulse 0.5s ease 4;
+  }
+  @keyframes levelPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.02)} }
+
+  /* === WIN/LOSE === */
+  .end-screen {
+    text-align: center;
+    padding: 32px 16px;
+  }
+  .end-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(14px, 3vw, 22px);
+    margin-bottom: 20px;
+  }
+  .end-title.win { color: var(--gold); text-shadow: 0 0 30px #f5c542; }
+  .end-title.lose { color: var(--red2); text-shadow: 0 0 30px var(--red); }
+  .final-stats { text-align: left; display: inline-block; margin: 16px 0; }
+  .final-row { padding: 4px 0; font-size: 20px; }
+  .final-row span { color: var(--gold); }
+
+  /* === NOTIFICATIONS === */
+  #notif {
+    position: fixed;
+    top: 20px; right: 20px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .notif-toast {
+    background: var(--panel);
+    border-left: 3px solid var(--gold);
+    padding: 8px 14px;
+    font-size: 18px;
+    max-width: 280px;
+    animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+  }
+  .notif-toast.bad { border-color: var(--red); }
+  .notif-toast.good { border-color: var(--green); }
+  @keyframes toastIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+  @keyframes toastOut { from{opacity:1} to{opacity:0} }
+
+  /* === INPUT === */
+  .text-input {
+    background: var(--bg);
+    border: 2px solid var(--border2);
+    color: var(--white);
+    font-family: 'VT323', monospace;
+    font-size: 22px;
+    padding: 10px 14px;
+    width: 100%;
+    margin-bottom: 12px;
+    outline: none;
+  }
+  .text-input:focus { border-color: var(--gold); }
+
+  /* Items badge */
+  .item-badge {
+    display: inline-block;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    margin: 2px;
+    font-size: 16px;
+    color: var(--green);
+  }
+  .item-badge.inactive { color: var(--text2); text-decoration: line-through; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  /* Floor indicator dots */
+  .floor-dots {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin: 8px 0;
+  }
+  .floor-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    border: 1px solid var(--border2);
+    transition: all 0.3s;
+  }
+  .floor-dot.done { background: var(--gold); border-color: var(--gold2); }
+  .floor-dot.current { background: var(--green); border-color: var(--green2); box-shadow: 0 0 6px var(--green); }
+  .floor-dot.boss { background: var(--red); border-color: var(--red2); }
+</style>
+</head>
+<body>
+<div id="notif"></div>
+<div id="app">
+
+  <!-- ==================== MAIN MENU ==================== -->
+  <div id="screen-menu" class="screen active">
+    <div class="title-art">
+██╗███████╗ █████╗  █████╗  ██████╗<br>
+██║██╔════╝██╔══██╗██╔══██╗██╔════╝<br>
+██║███████╗███████║███████║██║     <br>
+██║╚════██║██╔══██║██╔══██║██║     <br>
+██║███████║██║  ██║██║  ██║╚██████╗<br>
+╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝
+    </div>
+    <div class="title-sub">DELVE ✦ ROGUELIKE EDITION</div>
+    <div class="panel">
+      <div class="panel-title">⚰ MAIN MENU</div>
+      <button class="menu-btn" onclick="showScreen('screen-newgame')">⚔ NEW GAME</button>
+      <button class="menu-btn" id="btn-continue" onclick="continueGame()">📜 CONTINUE</button>
+      <button class="menu-btn" onclick="showScreen('screen-howto')">❓ HOW TO PLAY</button>
+    </div>
+    <div style="text-align:center;color:var(--text2);font-size:16px;padding:8px;">
+      Survive 7 floors. Collect items. Escape the dungeon.
+    </div>
+  </div>
+
+  <!-- ==================== HOW TO PLAY ==================== -->
+  <div id="screen-howto" class="screen">
+    <div class="panel">
+      <div class="panel-title">❓ HOW TO PLAY</div>
+      <div style="font-size:18px;line-height:1.8;color:var(--text)">
+        <p style="color:var(--gold);margin-bottom:8px;">🎯 GOAL: Survive 7 floors and escape!</p>
+        <p style="color:var(--text2);margin-bottom:12px;">Floors 3, 6, and 7 have BOSSES. Other floors let you choose a path.</p>
+        <p style="color:var(--blue);margin:8px 0;">⚔ COMBAT</p>
+        <p>Attack, Defend (reduce next hit), or Use Potion (+8 HP)</p>
+        <p>Evasion % = SPD/(SPD+10)×100, capped 5–60%</p>
+        <p>Defense reduces incoming damage. Two-handed weapons block off-hand.</p>
+        <br>
+        <p style="color:var(--blue);margin:8px 0;">🗡 EQUIPMENT</p>
+        <p>1H Weapons: Dual wield — off-hand deals 60% damage</p>
+        <p>2H Weapons: Massive damage, locks off-hand slot</p>
+        <p>4 Armor Slots: Head · Chest · Pants · Boots</p>
+        <p>2 Accessory Slots with unique effects (BoI-style!)</p>
+        <br>
+        <p style="color:var(--blue);margin:8px 0;">💎 ACCESSORIES</p>
+        <p>Thorn Ring — Reflect 25% damage back to enemies</p>
+        <p>Vampire Fang — Heal 3 HP per kill</p>
+        <p>Lucky Coin — +1 to all damage rolls</p>
+        <p>Cursed Idol — RISKY: +4 damage but take more hits</p>
+        <p>Featherstone — Ignore all speed penalties</p>
+        <p>...and 9 more to discover!</p>
+        <br>
+        <p style="color:var(--red2);">💀 PERMADEATH: HP=0 = Game Over. No second chances.</p>
+        <p style="color:var(--green);">💾 SAVE: Progress auto-saves to browser storage.</p>
+      </div>
+    </div>
+    <button class="menu-btn" onclick="showScreen('screen-menu')">◀ BACK</button>
+  </div>
+
+  <!-- ==================== NEW GAME ==================== -->
+  <div id="screen-newgame" class="screen">
+    <div class="panel">
+      <div class="panel-title">⚰ NAME YOUR ADVENTURER</div>
+      <input type="text" class="text-input" id="player-name-input" placeholder="Enter name..." maxlength="18">
+      <div class="class-grid" id="class-grid">
+        <div class="class-card" onclick="startGame('Warrior')">
+          <span class="class-icon">⚔️</span>
+          <div class="class-name">WARRIOR</div>
+          <div class="class-desc">Born to tank hits. Reliable damage dealer.</div>
+          <div class="class-stats">
+            <div class="stat-row"><span>HP</span><span class="stat-val">28</span></div>
+            <div class="stat-row"><span>DEF</span><span class="stat-val">3</span></div>
+            <div class="stat-row"><span>SPD</span><span class="stat-val">8</span></div>
+            <div class="stat-row"><span>EVA</span><span class="stat-val">44%</span></div>
+            <div class="stat-row"><span>Starts With</span><span class="stat-val">Short Sword + Iron Helm</span></div>
+          </div>
+        </div>
+        <div class="class-card" onclick="startGame('Rogue')">
+          <span class="class-icon">🗡️</span>
+          <div class="class-name">ROGUE</div>
+          <div class="class-desc">Fast, lethal, high evasion glass cannon.</div>
+          <div class="class-stats">
+            <div class="stat-row"><span>HP</span><span class="stat-val">20</span></div>
+            <div class="stat-row"><span>DEF</span><span class="stat-val">1</span></div>
+            <div class="stat-row"><span>SPD</span><span class="stat-val">14</span></div>
+            <div class="stat-row"><span>EVA</span><span class="stat-val">58%</span></div>
+            <div class="stat-row"><span>Starts With</span><span class="stat-val">Twin Daggers (dual!)</span></div>
+          </div>
+        </div>
+        <div class="class-card" onclick="startGame('Scholar')">
+          <span class="class-icon">📚</span>
+          <div class="class-name">SCHOLAR</div>
+          <div class="class-desc">Balanced. Lucky Coin adds +1 to all rolls.</div>
+          <div class="class-stats">
+            <div class="stat-row"><span>HP</span><span class="stat-val">22</span></div>
+            <div class="stat-row"><span>DEF</span><span class="stat-val">2</span></div>
+            <div class="stat-row"><span>SPD</span><span class="stat-val">10</span></div>
+            <div class="stat-row"><span>EVA</span><span class="stat-val">50%</span></div>
+            <div class="stat-row"><span>Starts With</span><span class="stat-val">Bone Wand + Lucky Coin</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="menu-btn" onclick="showScreen('screen-menu')">◀ BACK</button>
+  </div>
+
+  <!-- ==================== GAME HUD (always shown during play) ==================== -->
+  <div id="hud" style="display:none">
+    <div class="hud-name" id="hud-name">HERO [CLASS]</div>
+    <div>
+      <div class="bar-wrap">
+        <div class="bar-label">❤ HP</div>
+        <div class="bar-track">
+          <div class="bar-fill hp" id="bar-hp" style="width:100%"></div>
+          <div class="bar-text" id="bar-hp-text">20/20</div>
+        </div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label">⭐ XP</div>
+        <div class="bar-track">
+          <div class="bar-fill xp" id="bar-xp" style="width:0%"></div>
+          <div class="bar-text" id="bar-xp-text">0/20</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="floor-dots" id="floor-dots"></div>
+    </div>
+    <div class="hud-stats" id="hud-stats"></div>
+  </div>
+
+  <!-- ==================== FLOOR SCREEN ==================== -->
+  <div id="screen-floor" class="screen">
+    <div class="panel">
+      <div class="panel-title" id="floor-title">FLOOR 1 — EXPLORATION</div>
+      <div class="room-desc" id="room-desc">The dungeon awaits...</div>
+      <div class="path-grid">
+        <button class="path-btn danger" onclick="takePath('left')">
+          <span class="path-icon">🕯️</span>
+          <span class="path-name">Left Corridor</span>
+          <span class="path-hint">Dark. Items & danger.</span>
+        </button>
+        <button class="path-btn" onclick="takePath('right')">
+          <span class="path-icon">🏪</span>
+          <span class="path-name">Right Chamber</span>
+          <span class="path-hint">Merchant or ambush.</span>
+        </button>
+        <button class="path-btn safe" onclick="takePath('center')">
+          <span class="path-icon">⬇️</span>
+          <span class="path-name">Center Stairs</span>
+          <span class="path-hint">Descend. Progress.</span>
+        </button>
+        <button class="path-btn" onclick="showEquipmentScreen()">
+          <span class="path-icon">🎒</span>
+          <span class="path-name">Equipment</span>
+          <span class="path-hint">View your gear.</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== ENCOUNTER SCREEN ==================== -->
+  <div id="screen-encounter" class="screen">
+    <div class="panel" id="encounter-panel">
+      <!-- Filled dynamically -->
+    </div>
+  </div>
+
+  <!-- ==================== EQUIPMENT SCREEN ==================== -->
+  <div id="screen-equipment" class="screen">
+    <div class="panel">
+      <div class="panel-title">🎒 EQUIPMENT</div>
+      <div class="equip-grid" id="equip-grid"></div>
+    </div>
+    <div class="panel" id="items-panel">
+      <div class="panel-title">🎒 CONSUMABLES</div>
+      <div id="items-badges"></div>
+    </div>
+    <button class="menu-btn" onclick="showScreen('screen-floor')">◀ BACK TO FLOOR</button>
+  </div>
+
+  <!-- ==================== END SCREEN ==================== -->
+  <div id="screen-end" class="screen">
+    <div class="panel">
+      <div class="end-screen" id="end-content"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ================================================================
+// DATA
+// ================================================================
+
+const WEAPONS = [
+  {name:"Rusty Dagger",   icon:"🗡️",  dmin:2,  dmax:5,  spd: 2, hands:1},
+  {name:"Short Sword",    icon:"⚔️",  dmin:4,  dmax:8,  spd: 1, hands:1},
+  {name:"Hand Axe",       icon:"🪓",  dmin:5,  dmax:9,  spd:-1, hands:1},
+  {name:"Rapier",         icon:"🤺",  dmin:3,  dmax:7,  spd: 3, hands:1},
+  {name:"Mace",           icon:"🔨",  dmin:6,  dmax:10, spd:-2, hands:1},
+  {name:"Throwing Knife", icon:"🔪",  dmin:2,  dmax:6,  spd: 2, hands:1},
+  {name:"Crossbow",       icon:"🏹",  dmin:6,  dmax:12, spd:-1, hands:1},
+  {name:"Greatsword",     icon:"⚔️",  dmin:10, dmax:18, spd:-3, hands:2},
+  {name:"War Hammer",     icon:"🔨",  dmin:12, dmax:20, spd:-4, hands:2},
+  {name:"Halberd",        icon:"🪓",  dmin:9,  dmax:16, spd:-2, hands:2},
+  {name:"Staff of Embers",icon:"🔥",  dmin:8,  dmax:14, spd: 0, hands:2},
+  {name:"Cursed Blade",   icon:"💀",  dmin:14, dmax:22, spd:-5, hands:2},
+  {name:"Twin Fang Daggers",icon:"🗡️",dmin:3, dmax:6,  spd: 4, hands:1},
+  {name:"Bone Wand",      icon:"🪄",  dmin:5,  dmax:10, spd: 1, hands:1},
+];
+
+const ARMORS = [
+  {name:"Leather Cap",     icon:"🪖", def:1, spd: 1, hp:0, slot:"head"},
+  {name:"Iron Helm",       icon:"⛑️", def:3, spd:-1, hp:0, slot:"head"},
+  {name:"Skull Mask",      icon:"💀", def:2, spd: 0, hp:2, slot:"head"},
+  {name:"Hood of Shadows", icon:"🕶️", def:1, spd: 2, hp:0, slot:"head"},
+  {name:"Leather Vest",    icon:"👕", def:2, spd: 0, hp:2, slot:"chest"},
+  {name:"Chainmail",       icon:"🛡️", def:4, spd:-2, hp:0, slot:"chest"},
+  {name:"Plate Cuirass",   icon:"🛡️", def:6, spd:-3, hp:5, slot:"chest"},
+  {name:"Rogue's Tunic",   icon:"🥷", def:2, spd: 2, hp:0, slot:"chest"},
+  {name:"Padded Trousers", icon:"👖", def:1, spd: 0, hp:2, slot:"pants"},
+  {name:"Scale Leggings",  icon:"🦵", def:3, spd:-1, hp:0, slot:"pants"},
+  {name:"Drifter's Pants", icon:"👖", def:1, spd: 2, hp:0, slot:"pants"},
+  {name:"Warden Greaves",  icon:"🦵", def:4, spd:-2, hp:3, slot:"pants"},
+  {name:"Leather Boots",   icon:"👟", def:1, spd: 1, hp:0, slot:"boots"},
+  {name:"Iron Boots",      icon:"👢", def:2, spd:-1, hp:0, slot:"boots"},
+  {name:"Ghoststep Boots", icon:"👻", def:1, spd: 2, hp:1, slot:"boots"},
+  {name:"Cursed Stompers", icon:"💀", def:3, spd:-2, hp:2, slot:"boots"},
+];
+
+const ACCESSORIES = [
+  {name:"Thorn Ring",       icon:"💍", desc:"+25% damage reflected",    hp:0, mhp:0, def:0, spd:0, thorns:true,  vamp:false, lucky:false, cursed:false, weightless:false},
+  {name:"Vampire Fang",     icon:"🦷", desc:"Heal 3 HP per kill",       hp:0, mhp:0, def:0, spd:0, thorns:false, vamp:true,  lucky:false, cursed:false, weightless:false},
+  {name:"Lucky Coin",       icon:"🪙", desc:"+1 to all rolls",          hp:0, mhp:0, def:0, spd:0, thorns:false, vamp:false, lucky:true,  cursed:false, weightless:false},
+  {name:"Cursed Idol",      icon:"🗿", desc:"RISKY: +4 dmg, take more", hp:0, mhp:0, def:0, spd:0, thorns:false, vamp:false, lucky:false, cursed:true,  weightless:false},
+  {name:"Featherstone",     icon:"🪶", desc:"Ignore SPD penalties",     hp:0, mhp:0, def:0, spd:0, thorns:false, vamp:false, lucky:false, cursed:false, weightless:true},
+  {name:"Phantom Ring",     icon:"💎", desc:"Weightless + Lucky",       hp:0, mhp:0, def:0, spd:0, thorns:false, vamp:false, lucky:true,  cursed:false, weightless:true},
+  {name:"Orb of Power",     icon:"🔮", desc:"+2 Max HP",                hp:0, mhp:2, def:0, spd:0, thorns:false, vamp:false, lucky:false, cursed:false, weightless:false},
+  {name:"Shadow Amulet",    icon:"🌑", desc:"+1 DEF, -2 SPD",           hp:0, mhp:0, def:1, spd:-2,thorns:false, vamp:false, lucky:false, cursed:false, weightless:false},
+  {name:"Mercury Vial",     icon:"⚗️", desc:"+3 SPD",                  hp:0, mhp:0, def:0, spd:3, thorns:false, vamp:false, lucky:false, cursed:false, weightless:false},
+  {name:"Heart Container",  icon:"❤️", desc:"+3 Max HP",               hp:0, mhp:3, def:0, spd:0, thorns:false, vamp:false, lucky:false, cursed:false, weightless:false},
+  {name:"Spiky Shield",     icon:"🛡️", desc:"+2 DEF, reflect 10%",     hp:0, mhp:0, def:2, spd:0, thorns:true,  vamp:false, lucky:false, cursed:false, weightless:false},
+  {name:"Void Crystal",     icon:"🔮", desc:"+1 HP, -1 SPD",           hp:1, mhp:0, def:0, spd:-1,thorns:false, vamp:false, lucky:false, cursed:false, weightless:false},
+  {name:"Executioner's Axe",icon:"🪓", desc:"+6 dmg, -3 DEF",          hp:0, mhp:0, def:-3,spd:0, thorns:false, vamp:false, lucky:false, cursed:false, weightless:false},
+  {name:"Ancient Coin",     icon:"🏺", desc:"+1 gold/kill",             hp:0, mhp:0, def:0, spd:0, thorns:false, vamp:false, lucky:true,  cursed:false, weightless:false},
+];
+
+const ENEMIES = [
+  {name:"Slime",       icon:"🟢", hp:3,  amin:1, amax:3,  def:0, spd:3,  gold:5,  xp:10},
+  {name:"Goblin",      icon:"👺", hp:5,  amin:2, amax:4,  def:1, spd:6,  gold:10, xp:15},
+  {name:"Skeleton",    icon:"💀", hp:8,  amin:3, amax:6,  def:2, spd:5,  gold:15, xp:25},
+  {name:"Orc Grunt",   icon:"👹", hp:12, amin:4, amax:8,  def:2, spd:4,  gold:20, xp:30},
+  {name:"Wraith",      icon:"👻", hp:6,  amin:3, amax:7,  def:1, spd:10, gold:15, xp:20},
+  {name:"Shadow Beast",icon:"🐉", hp:10, amin:5, amax:9,  def:2, spd:7,  gold:25, xp:35},
+];
+
+const BOSSES = [
+  {name:"Blob King",       icon:"🟤", hp:25, amin:5,  amax:10, def:3, spd:5, gold:50,  xp:100},
+  {name:"Dark Knight",     icon:"🖤", hp:30, amin:6,  amax:12, def:4, spd:6, gold:75,  xp:150},
+  {name:"Ancient Wyrm",    icon:"🐲", hp:40, amin:8,  amax:15, def:3, spd:8, gold:100, xp:200},
+  {name:"Lich Lord",       icon:"☠️", hp:35, amin:7,  amax:14, def:5, spd:7, gold:90,  xp:180},
+  {name:"Void Incarnate",  icon:"🌀", hp:50, amin:10, amax:18, def:4, spd:6, gold:125, xp:250},
+];
+
+const ROOM_DESCS = [
+  "The air reeks of death. Bones crunch underfoot.",
+  "Ancient torches flicker eerily on the stone walls.",
+  "Water drips from above. Thick moss covers everything.",
+  "Strange symbols glow faintly in the darkness.",
+  "A cold wind howls through the crumbling corridors.",
+  "Shadows dance between pillars of rotting wood.",
+  "The stench of sulfur fills your lungs.",
+];
+
+// ================================================================
+// GAME STATE
+// ================================================================
+
+let player = null;
+let currentEnemy = null;
+let combatLog = [];
+let isDefending = false;
+let afterEncounterCallback = null;
+
+function rnd(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randOf(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// Player stat helpers
+function getDefense() {
+  let d = player.base_defense;
+  if (player.head)  d += player.head.def;
+  if (player.chest) d += player.chest.def;
+  if (player.pants) d += player.pants.def;
+  if (player.boots) d += player.boots.def;
+  if (player.acc1)  d += (player.acc1.def || 0);
+  if (player.acc2)  d += (player.acc2.def || 0);
+  return Math.max(0, d);
+}
+
+function getSpeed() {
+  let s = player.speed;
+  const weightless = (player.acc1 && player.acc1.weightless) || (player.acc2 && player.acc2.weightless);
+  if (!weightless) {
+    if (player.weapon_main) s += player.weapon_main.spd;
+    if (player.weapon_off)  s += player.weapon_off.spd;
+    if (player.head)        s += player.head.spd;
+    if (player.chest)       s += player.chest.spd;
+    if (player.pants)       s += player.pants.spd;
+    if (player.boots)       s += player.boots.spd;
+  }
+  if (player.acc1) s += (player.acc1.spd || 0);
+  if (player.acc2) s += (player.acc2.spd || 0);
+  return Math.max(1, s);
+}
+
+function getEvasion() {
+  const s = getSpeed();
+  return Math.max(5, Math.min(60, Math.floor((s * 100) / (s + 10))));
+}
+
+function rollWeaponDmg() {
+  let dmg = 1;
+  if (player.weapon_main) {
+    dmg = rnd(player.weapon_main.dmin, player.weapon_main.dmax);
+    if (player.weapon_off && player.weapon_main.hands === 1) {
+      dmg += Math.floor(rnd(player.weapon_off.dmin, player.weapon_off.dmax) * 0.6);
+    }
+  }
+  const lucky  = (player.acc1 && player.acc1.lucky)  || (player.acc2 && player.acc2.lucky);
+  const cursed = (player.acc1 && player.acc1.cursed) || (player.acc2 && player.acc2.cursed);
+  if (lucky)  dmg += 1;
+  if (cursed) dmg += 4;
+  return Math.max(1, dmg);
+}
+
+function equipWeapon(w) {
+  if (w.hands === 2) {
+    player.weapon_main = w;
+    player.weapon_off = null;
+  } else {
+    if (!player.weapon_main) player.weapon_main = w;
+    else player.weapon_off = w;
+  }
+}
+
+function equipArmor(a) {
+  player[a.slot] = a;
+}
+
+function equipAccessory(a) {
+  if (!player.acc1) player.acc1 = a;
+  else player.acc2 = a;
+}
+
+function spawnEnemy(floor) {
+  const base = randOf(ENEMIES);
+  return {
+    name: base.name,
+    icon: base.icon,
+    hp: base.hp + floor * 2,
+    maxHp: base.hp + floor * 2,
+    amin: base.amin + floor,
+    amax: base.amax + floor,
+    def: base.def + Math.floor(floor / 2),
+    spd: base.spd,
+    gold: base.gold + floor * 5,
+    xp: base.xp + floor * 10,
+    isBoss: false,
+  };
+}
+
+function spawnBoss(floor) {
+  const base = randOf(BOSSES);
+  return {
+    name: base.name,
+    icon: base.icon,
+    hp: base.hp + floor * 8,
+    maxHp: base.hp + floor * 8,
+    amin: base.amin + floor * 2,
+    amax: base.amax + floor * 2,
+    def: base.def + floor,
+    spd: base.spd,
+    gold: 100 + floor * 30,
+    xp: 300 + floor * 50,
+    isBoss: true,
+  };
+}
+
+// ================================================================
+// SAVE / LOAD (localStorage)
+// ================================================================
+
+function saveGame() {
+  try {
+    localStorage.setItem('isaac_delve_save', JSON.stringify(player));
+    toast('Game saved!', 'good');
+  } catch(e) { toast('Save failed.', 'bad'); }
+}
+
+function loadGame() {
+  try {
+    const raw = localStorage.getItem('isaac_delve_save');
+    if (!raw) return false;
+    player = JSON.parse(raw);
+    return true;
+  } catch(e) { return false; }
+}
+
+function hasSave() {
+  return !!localStorage.getItem('isaac_delve_save');
+}
+
+// ================================================================
+// UI HELPERS
+// ================================================================
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function toast(msg, type='') {
+  const el = document.createElement('div');
+  el.className = 'notif-toast' + (type ? ' '+type : '');
+  el.textContent = msg;
+  document.getElementById('notif').appendChild(el);
+  setTimeout(() => el.remove(), 3100);
+}
+
+function updateHUD() {
+  if (!player) return;
+  document.getElementById('hud').style.display = '';
+  document.getElementById('hud-name').textContent =
+    player.name + ' [' + player.class_name + '] — Floor ' + player.floor + '/7';
+
+  const hpPct = Math.max(0, Math.min(100, (player.hp / player.max_hp) * 100));
+  document.getElementById('bar-hp').style.width = hpPct + '%';
+  document.getElementById('bar-hp-text').textContent = player.hp + '/' + player.max_hp;
+
+  const xpNeeded = player.level * 20;
+  const xpPct = Math.min(100, (player.xp / xpNeeded) * 100);
+  document.getElementById('bar-xp').style.width = xpPct + '%';
+  document.getElementById('bar-xp-text').textContent = player.xp + '/' + xpNeeded;
+
+  // Floor dots
+  const dots = document.getElementById('floor-dots');
+  dots.innerHTML = '';
+  for (let i = 1; i <= 7; i++) {
+    const d = document.createElement('div');
+    d.className = 'floor-dot';
+    if ([3,6,7].includes(i)) d.className += ' boss';
+    if (i < player.floor) d.className = 'floor-dot done';
+    if (i === player.floor) d.className = 'floor-dot current';
+    dots.appendChild(d);
+  }
+
+  const stats = document.getElementById('hud-stats');
+  stats.innerHTML =
+    `<span class="hud-stat">⚔ DEF <span>${getDefense()}</span></span>` +
+    `<span class="hud-stat">💨 SPD <span>${getSpeed()}</span></span>` +
+    `<span class="hud-stat">🌀 EVA <span>${getEvasion()}%</span></span>` +
+    `<span class="hud-stat">💰 Gold <span>${player.gold}</span></span>` +
+    `<span class="hud-stat">⭐ Lvl <span>${player.level}</span></span>`;
+}
+
+// ================================================================
+// GAME FLOW
+// ================================================================
+
+function startGame(cls) {
+  const nameInput = document.getElementById('player-name-input').value.trim();
+  if (!nameInput) { toast('Enter a name first!', 'bad'); return; }
+
+  player = {
+    name: nameInput,
+    class_name: cls,
+    hp: 0, max_hp: 0,
+    base_defense: 0, speed: 0,
+    gold: 10, floor: 1, xp: 0, level: 1,
+    has_torch: false, has_rope: false, has_potion: false,
+    weapon_main: null, weapon_off: null,
+    head: null, chest: null, pants: null, boots: null,
+    acc1: null, acc2: null,
+  };
+
+  if (cls === 'Warrior') {
+    player.max_hp = player.hp = 28;
+    player.base_defense = 3;
+    player.speed = 8;
+    player.has_torch = true;
+    equipWeapon({...WEAPONS[1]});
+    equipArmor({...ARMORS[1]});
+  } else if (cls === 'Rogue') {
+    player.max_hp = player.hp = 20;
+    player.base_defense = 1;
+    player.speed = 14;
+    player.has_rope = true;
+    equipWeapon({...WEAPONS[12]});
+    equipWeapon({...WEAPONS[0]});
+  } else {
+    player.max_hp = player.hp = 22;
+    player.base_defense = 2;
+    player.speed = 10;
+    player.has_potion = true;
+    equipWeapon({...WEAPONS[13]});
+    equipAccessory({...ACCESSORIES[2]});
+  }
+
+  toast('Welcome, ' + player.name + ' the ' + cls + '!', 'good');
+  saveGame();
+  showFloor();
+}
+
+function continueGame() {
+  if (!hasSave()) { toast('No save found!', 'bad'); return; }
+  if (loadGame()) {
+    toast('Welcome back, ' + player.name + '!', 'good');
+    showFloor();
+  }
+}
+
+function showFloor() {
+  updateHUD();
+  const title = document.getElementById('floor-title');
+  const desc  = document.getElementById('room-desc');
+  const isBossFloor = [3, 6, 7].includes(player.floor);
+
+  if (isBossFloor) {
+    title.innerHTML = `⚠ FLOOR ${player.floor} — BOSS FLOOR`;
+    desc.textContent = 'Something powerful lurks ahead. The iron door groans...';
+    // Auto-enter boss
+    setTimeout(() => encounterBoss(), 600);
+    showScreen('screen-floor');
+  } else {
+    title.textContent = `FLOOR ${player.floor} — EXPLORATION`;
+    desc.textContent = randOf(ROOM_DESCS);
+    showScreen('screen-floor');
+  }
+}
+
+function takePath(path) {
+  if (path === 'left') {
+    if (!player.has_torch) {
+      if (rnd(1, 3) === 1) encounterTrap();
+      else encounterMonster(() => showFloor());
+    } else {
+      const r = rnd(1, 4);
+      if (r === 1) encounterTrap();
+      else if (r === 2) encounterTreasure();
+      else if (r === 3) encounterMonster(() => showFloor());
+      else encounterShrine();
+    }
+  } else if (path === 'right') {
+    if (rnd(1, 2) === 1) encounterMerchant();
+    else encounterMonster(() => showFloor());
+  } else if (path === 'center') {
+    descend();
+  }
+}
+
+function descend() {
+  if ([3, 6].includes(player.floor)) {
+    encounterBoss();
+    return;
+  }
+  // Advance floor
+  player.floor++;
+  if (player.floor > 7) {
+    winGame(); return;
+  }
+  const heal = rnd(4, 8);
+  player.hp = Math.min(player.hp + heal, player.max_hp);
+  toast('Descended to Floor ' + player.floor + '. Healed ' + heal + ' HP.', 'good');
+  saveGame();
+  updateHUD();
+  showFloor();
+}
+
+// ================================================================
+// ENCOUNTERS
+// ================================================================
+
+function encounterTrap() {
+  let dmg = rnd(1, 6) + player.floor;
+  const panel = document.getElementById('encounter-panel');
+  if (player.has_rope) {
+    player.has_rope = false;
+    panel.innerHTML = `
+      <div class="panel-title">⚠ TRAP!</div>
+      <p style="font-size:22px;margin:12px 0;">🪢 Your rope saves you! No damage taken.</p>
+      <button class="menu-btn" onclick="showFloor()">◀ CONTINUE</button>`;
+    toast('Rope used! Trap avoided.', 'good');
+  } else {
+    dmg = Math.max(1, dmg - getDefense());
+    player.hp -= dmg;
+    if (player.hp <= 0) {
+      panel.innerHTML = `
+        <div class="panel-title">☠ TRAP!</div>
+        <p style="font-size:22px;color:var(--red2);">You took ${dmg} damage from the trap and died!</p>`;
+      showScreen('screen-encounter');
+      updateHUD();
+      setTimeout(() => gameOver(), 1500);
+      return;
+    }
+    panel.innerHTML = `
+      <div class="panel-title">⚠ TRAP!</div>
+      <p style="font-size:22px;color:var(--red2);margin:12px 0;">You stumble into a trap! -${dmg} HP 😬</p>
+      <button class="menu-btn" onclick="showFloor()">◀ CONTINUE</button>`;
+  }
+  updateHUD();
+  showScreen('screen-encounter');
+}
+
+function encounterTreasure() {
+  const gold = rnd(10, 40);
+  player.gold += gold;
+  let extra = '';
+  if (rnd(1,2) === 1) {
+    extra = grantRandomItem();
+  }
+  const panel = document.getElementById('encounter-panel');
+  panel.innerHTML = `
+    <div class="panel-title">💰 TREASURE CHEST!</div>
+    <p style="font-size:24px;color:var(--gold);margin:10px 0;">Found ${gold} gold! 🎊</p>
+    ${extra ? `<div class="item-found">${extra}</div>` : ''}
+    <button class="menu-btn" onclick="showFloor()">◀ CONTINUE</button>`;
+  updateHUD();
+  showScreen('screen-encounter');
+  saveGame();
+}
+
+function grantRandomItem() {
+  const type = rnd(1, 3);
+  if (type === 1) {
+    const w = {...randOf(WEAPONS)};
+    equipWeapon(w);
+    return `<div class="item-icon">${w.icon}</div><div class="item-name">${w.name}</div><div class="item-desc">Weapon equipped!</div>`;
+  } else if (type === 2) {
+    const a = {...randOf(ARMORS)};
+    equipArmor(a);
+    return `<div class="item-icon">${a.icon}</div><div class="item-name">${a.name}</div><div class="item-desc">Armor equipped!</div>`;
+  } else {
+    const ac = {...randOf(ACCESSORIES)};
+    if (ac.mhp) { player.max_hp += ac.mhp; player.hp += ac.mhp; }
+    if (ac.hp)  { player.hp = Math.min(player.hp + ac.hp, player.max_hp); }
+    equipAccessory(ac);
+    return `<div class="item-icon">${ac.icon}</div><div class="item-name">${ac.name}</div><div class="item-desc">${ac.desc}</div>`;
+  }
+}
+
+function encounterShrine() {
+  const panel = document.getElementById('encounter-panel');
+  panel.innerHTML = `
+    <div class="panel-title">🏛 ANCIENT SHRINE</div>
+    <p style="color:var(--text2);margin:8px 0 16px;">The shrine pulses with ancient power...</p>
+    <div class="shrine-opts">
+      <button class="path-btn" onclick="shrineGold()">
+        <span class="path-icon">💰</span>
+        <span class="path-name">Pay 5 Gold</span>
+        <span class="path-hint">Random blessing (Gold: ${player.gold})</span>
+      </button>
+      <button class="path-btn" onclick="shrineHP()">
+        <span class="path-icon">❤️</span>
+        <span class="path-name">Sacrifice 1 HP</span>
+        <span class="path-hint">Gain +2 DEF permanently</span>
+      </button>
+    </div>
+    <button class="menu-btn" style="margin-top:12px" onclick="showFloor()">🚶 Leave the shrine</button>`;
+  showScreen('screen-encounter');
+}
+
+function shrineGold() {
+  if (player.gold < 5) { toast('Not enough gold!', 'bad'); return; }
+  player.gold -= 5;
+  const roll = rnd(1, 3);
+  let msg;
+  if (roll === 1) { player.max_hp += 3; player.hp = player.max_hp; msg = 'Blessed! Max HP +3! ❤️'; }
+  else if (roll === 2) { player.speed += 2; msg = 'Swift! SPD +2! 💨'; }
+  else { player.base_defense += 1; msg = 'Fortified! DEF +1! 🛡️'; }
+  toast(msg, 'good');
+  updateHUD(); saveGame();
+  document.querySelector('#encounter-panel .panel-title').textContent = '🏛 SHRINE — BLESSED!';
+  document.querySelector('#encounter-panel p').textContent = msg;
+  setTimeout(() => showFloor(), 1500);
+}
+
+function shrineHP() {
+  if (player.hp <= 1) { toast('Too weak!', 'bad'); return; }
+  player.hp -= 1;
+  player.base_defense += 2;
+  toast('Sacrifice accepted! DEF +2 ⚡', 'good');
+  updateHUD(); saveGame();
+  setTimeout(() => showFloor(), 1200);
+}
+
+function encounterMerchant() {
+  renderMerchant();
+}
+
+function renderMerchant() {
+  const panel = document.getElementById('encounter-panel');
+  panel.innerHTML = `
+    <div class="panel-title">🏪 MERCHANT</div>
+    <p style="color:var(--text2);margin-bottom:12px;">💰 Your gold: <span style="color:var(--gold)">${player.gold}</span></p>
+    <div class="shop-grid">
+      <div class="shop-item ${player.gold < 15 ? 'cant-afford' : ''}" onclick="buyPotion()">
+        <div class="shop-icon">🧪</div>
+        <div class="shop-name">Health Potion</div>
+        <div class="shop-cost">15 gold · Heal 8 HP</div>
+      </div>
+      <div class="shop-item ${player.gold < 20 ? 'cant-afford' : ''}" onclick="buyWeapon()">
+        <div class="shop-icon">⚔️</div>
+        <div class="shop-name">Random Weapon</div>
+        <div class="shop-cost">20 gold</div>
+      </div>
+      <div class="shop-item ${player.gold < 20 ? 'cant-afford' : ''}" onclick="buyArmor()">
+        <div class="shop-icon">🛡️</div>
+        <div class="shop-name">Random Armor</div>
+        <div class="shop-cost">20 gold</div>
+      </div>
+      <div class="shop-item" onclick="showFloor()">
+        <div class="shop-icon">🚪</div>
+        <div class="shop-name">Leave Shop</div>
+        <div class="shop-cost">Free</div>
+      </div>
+    </div>`;
+  updateHUD();
+  showScreen('screen-encounter');
+}
+
+function buyPotion() {
+  if (player.gold < 15) { toast('Not enough gold!', 'bad'); return; }
+  player.gold -= 15;
+  player.has_potion = true;
+  toast('Bought a Health Potion!', 'good');
+  saveGame(); renderMerchant();
+}
+function buyWeapon() {
+  if (player.gold < 20) { toast('Not enough gold!', 'bad'); return; }
+  player.gold -= 20;
+  const w = {...randOf(WEAPONS)};
+  equipWeapon(w);
+  toast('Bought: ' + w.name, 'good');
+  saveGame(); renderMerchant();
+}
+function buyArmor() {
+  if (player.gold < 20) { toast('Not enough gold!', 'bad'); return; }
+  player.gold -= 20;
+  const a = {...randOf(ARMORS)};
+  equipArmor(a);
+  toast('Bought: ' + a.name, 'good');
+  saveGame(); renderMerchant();
+}
+
+// ================================================================
+// COMBAT
+// ================================================================
+
+function encounterMonster(callback) {
+  afterEncounterCallback = callback || (() => showFloor());
+  currentEnemy = spawnEnemy(player.floor);
+  isDefending = false;
+  combatLog = [];
+  renderCombat();
+}
+
+function encounterBoss() {
+  afterEncounterCallback = () => {
+    if (player.floor >= 7) { winGame(); return; }
+    player.floor++;
+    player.hp = player.max_hp;
+    toast('Boss defeated! Floor cleared! HP restored.', 'good');
+    saveGame();
+    updateHUD();
+    showFloor();
+  };
+  currentEnemy = spawnBoss(player.floor);
+  isDefending = false;
+  combatLog = [{text: `⚠ BOSS: ${currentEnemy.name} appears!`, cls:'boss'}];
+  renderCombat();
+}
+
+function renderCombat() {
+  updateHUD();
+  const panel = document.getElementById('encounter-panel');
+  const e = currentEnemy;
+  const eHpPct = Math.max(0, Math.min(100, (e.hp / e.maxHp) * 100));
+  const pHpPct = Math.max(0, Math.min(100, (player.hp / player.max_hp) * 100));
+
+  const logHtml = combatLog.map(l => `<p class="${l.cls||''}">${l.text}</p>`).join('');
+  const potionDisabled = !player.has_potion ? 'disabled' : '';
+
+  panel.innerHTML = `
+    ${e.isBoss ? `<div class="boss-intro"><div class="boss-name">⚠ BOSS ENCOUNTER ⚠</div></div>` : ''}
+    <div class="panel-title">⚔ COMBAT — ${e.name}</div>
+    <div class="combat-area">
+      <div class="combatant enemy" id="enemy-combatant">
+        <div class="combatant-name">${e.name}</div>
+        <div class="enemy-art">${e.icon}</div>
+        <div class="bar-track">
+          <div class="bar-fill hp" style="width:${eHpPct}%;background:linear-gradient(90deg,#880000,#e03030)"></div>
+          <div class="bar-text">${e.hp}/${e.maxHp}</div>
+        </div>
+        <div style="font-size:16px;color:var(--text2);margin-top:4px;">DEF:${e.def} SPD:${e.spd}</div>
+      </div>
+      <div class="combatant player-side" id="player-combatant">
+        <div class="combatant-name">${player.name}</div>
+        <div class="enemy-art">🧑</div>
+        <div class="bar-track">
+          <div class="bar-fill hp" style="width:${pHpPct}%"></div>
+          <div class="bar-text">${player.hp}/${player.max_hp}</div>
+        </div>
+        <div style="font-size:16px;color:var(--text2);margin-top:4px;">DEF:${getDefense()} EVA:${getEvasion()}%</div>
+      </div>
+    </div>
+    <div class="log-box" id="combat-log">${logHtml}</div>
+    <div class="combat-actions">
+      <button class="action-btn" onclick="combatAction('attack')" id="btn-attack">
+        <span class="act-icon">⚔️</span>Attack
+      </button>
+      <button class="action-btn" onclick="combatAction('defend')" id="btn-defend">
+        <span class="act-icon">🛡️</span>Defend
+      </button>
+      <button class="action-btn" onclick="combatAction('potion')" ${potionDisabled} id="btn-potion">
+        <span class="act-icon">🧪</span>Potion${!player.has_potion ? ' [OUT]' : ''}
+      </button>
+    </div>`;
+
+  showScreen('screen-encounter');
+  // Scroll log to bottom
+  const log = document.getElementById('combat-log');
+  if (log) log.scrollTop = log.scrollHeight;
+}
+
+function addLog(text, cls='') {
+  combatLog.push({text, cls});
+  const log = document.getElementById('combat-log');
+  if (log) {
+    const p = document.createElement('p');
+    p.className = cls;
+    p.textContent = text;
+    log.appendChild(p);
+    log.scrollTop = log.scrollHeight;
+  }
+}
+
+function combatAction(action) {
+  // Disable buttons during processing
+  ['btn-attack','btn-defend','btn-potion'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.disabled = true;
+  });
+
+  const e = currentEnemy;
+  isDefending = false;
+
+  if (action === 'attack') {
+    const pdmg = Math.max(1, rollWeaponDmg() - e.def);
+    e.hp -= pdmg;
+    addLog(`You strike for ${pdmg} damage!`, 'hit');
+
+    // Vampire fang kill
+    if (e.hp <= 0) {
+      if ((player.acc1 && player.acc1.vamp) || (player.acc2 && player.acc2.vamp)) {
+        player.hp = Math.min(player.hp + 3, player.max_hp);
+        addLog('[Vampire Fang] Drain 3 HP!', 'heal');
+      }
+      combatVictory();
+      return;
+    }
+  } else if (action === 'defend') {
+    isDefending = true;
+    addLog('You brace for impact! (DEF doubled this turn)', 'sys');
+  } else if (action === 'potion') {
+    if (!player.has_potion) { renderCombat(); return; }
+    player.has_potion = false;
+    player.hp = Math.min(player.hp + 8, player.max_hp);
+    addLog('You drink a potion! +8 HP', 'heal');
+  }
+
+  // Enemy turn
+  setTimeout(() => {
+    const evaPct = getEvasion();
+    if (rnd(1, 100) <= evaPct) {
+      addLog(`${e.name} attacks but you EVADE!`, 'evade');
+    } else {
+      let edged = rnd(e.amin, e.amax);
+      let def = getDefense();
+      if (isDefending) def *= 2;
+      let edgeFinal = Math.max(1, edged - def);
+
+      // Cursed
+      if ((player.acc1 && player.acc1.cursed) || (player.acc2 && player.acc2.cursed)) {
+        edgeFinal += 2;
+      }
+
+      player.hp -= edgeFinal;
+      addLog(`${e.name} hits you for ${edgeFinal} damage!`, 'hit');
+
+      // Thorns
+      if ((player.acc1 && player.acc1.thorns) || (player.acc2 && player.acc2.thorns)) {
+        const reflect = Math.floor(edgeFinal * 0.25);
+        e.hp -= reflect;
+        addLog(`[Thorn Ring] Reflect ${reflect} damage!`, 'item');
+      }
+
+      // Animate hurt
+      const pc = document.getElementById('player-combatant');
+      if (pc) { pc.classList.add('hurt'); setTimeout(()=>pc.classList.remove('hurt'),350); }
+    }
+
+    updateHUD();
+
+    if (player.hp <= 0) {
+      player.hp = 0;
+      updateHUD();
+      addLog('You have been defeated...', 'boss');
+      setTimeout(() => gameOver(), 1200);
+      return;
+    }
+
+    if (e.hp <= 0) {
+      combatVictory(); return;
+    }
+
+    // Re-render for updated HP bars
+    setTimeout(() => renderCombat(), 400);
+  }, 500);
+}
+
+function combatVictory() {
+  const e = currentEnemy;
+  player.gold += e.gold;
+  player.xp   += e.xp;
+
+  addLog(`✓ ${e.name} defeated! +${e.gold} gold, +${e.xp} XP`, 'gold');
+
+  // Ancient Coin
+  if ((player.acc1 && player.acc1.name === 'Ancient Coin') || (player.acc2 && player.acc2.name === 'Ancient Coin')) {
+    player.gold += 1;
+  }
+
+  let leveledUp = false;
+  while (player.xp >= player.level * 20) {
+    player.xp -= player.level * 20;
+    player.level++;
+    player.max_hp += 5;
+    player.hp = Math.min(player.hp + 5, player.max_hp);
+    leveledUp = true;
+  }
+  if (leveledUp) {
+    toast('⭐ LEVEL UP! Now level ' + player.level + '!', 'good');
+  }
+
+  updateHUD();
+  saveGame();
+
+  if (e.isBoss) {
+    // Grant boss reward
+    const itemHtml = grantRandomItem();
+    const panel = document.getElementById('encounter-panel');
+    panel.innerHTML = `
+      <div class="panel-title">🏆 BOSS DEFEATED!</div>
+      <p style="font-size:20px;color:var(--gold);margin:10px 0;">You vanquish the ${e.name}!</p>
+      ${leveledUp ? `<div class="levelup-banner">⭐ LEVEL UP! Now level ${player.level}!</div>` : ''}
+      <p style="margin:8px 0;color:var(--text2);">You find a chest...</p>
+      <div class="item-found">${itemHtml}</div>
+      <button class="menu-btn" style="margin-top:12px" onclick="bossAfter()">▶ CONTINUE</button>`;
+    saveGame();
+  } else {
+    const panel = document.getElementById('encounter-panel');
+    let victoryHtml = `
+      <div class="panel-title">✓ VICTORY!</div>
+      <p style="font-size:22px;color:var(--gold);margin:10px 0;">${e.name} defeated! +${e.gold} gold, +${e.xp} XP</p>
+      ${leveledUp ? `<div class="levelup-banner">⭐ LEVEL UP! Now level ${player.level}!</div>` : ''}`;
+
+    // 30% chance of item drop
+    if (rnd(1,10) <= 3) {
+      const itemHtml = grantRandomItem();
+      victoryHtml += `<p style="color:var(--purple);margin:8px 0;">💎 Item dropped!</p><div class="item-found">${itemHtml}</div>`;
+    }
+    victoryHtml += `<button class="menu-btn" style="margin-top:12px" onclick="afterEncounterCallback()">▶ CONTINUE</button>`;
+    panel.innerHTML = victoryHtml;
+    saveGame();
+  }
+}
+
+function bossAfter() {
+  if (afterEncounterCallback) afterEncounterCallback();
+}
+
+// ================================================================
+// EQUIPMENT SCREEN
+// ================================================================
+
+function showEquipmentScreen() {
+  const grid = document.getElementById('equip-grid');
+  const slots = [
+    {label:'MAIN HAND', val: player.weapon_main ? player.weapon_main.icon + ' ' + player.weapon_main.name : null},
+    {label:'OFF HAND',  val: player.weapon_off  ? player.weapon_off.icon  + ' ' + player.weapon_off.name  : null},
+    {label:'HEAD',      val: player.head   ? player.head.icon   + ' ' + player.head.name   : null},
+    {label:'CHEST',     val: player.chest  ? player.chest.icon  + ' ' + player.chest.name  : null},
+    {label:'PANTS',     val: player.pants  ? player.pants.icon  + ' ' + player.pants.name  : null},
+    {label:'BOOTS',     val: player.boots  ? player.boots.icon  + ' ' + player.boots.name  : null},
+    {label:'ACCESSORY 1', val: player.acc1 ? player.acc1.icon + ' ' + player.acc1.name + ' — ' + player.acc1.desc : null},
+    {label:'ACCESSORY 2', val: player.acc2 ? player.acc2.icon + ' ' + player.acc2.name + ' — ' + player.acc2.desc : null},
+  ];
+
+  grid.innerHTML = slots.map(s => `
+    <div class="equip-slot">
+      <div class="equip-slot-label">${s.label}</div>
+      <div class="equip-slot-val ${s.val ? 'filled' : 'empty'}">${s.val || '(empty)'}</div>
+    </div>`).join('');
+
+  const badges = document.getElementById('items-badges');
+  badges.innerHTML =
+    `<span class="item-badge ${player.has_torch ? '' : 'inactive'}">🕯️ Torch</span>` +
+    `<span class="item-badge ${player.has_rope  ? '' : 'inactive'}">🪢 Rope</span>` +
+    `<span class="item-badge ${player.has_potion? '' : 'inactive'}">🧪 Potion</span>`;
+
+  updateHUD();
+  showScreen('screen-equipment');
+}
+
+// ================================================================
+// WIN / LOSE
+// ================================================================
+
+function winGame() {
+  localStorage.removeItem('isaac_delve_save');
+  document.getElementById('hud').style.display = 'none';
+  const content = document.getElementById('end-content');
+  content.innerHTML = `
+    <div class="end-title win">🏆 YOU ESCAPED! 🏆</div>
+    <p style="font-size:22px;color:var(--text2);margin-bottom:16px;">You survived all 7 floors of the dungeon!</p>
+    <div class="final-stats">
+      <div class="final-row">Hero: <span>${player.name}</span></div>
+      <div class="final-row">Class: <span>${player.class_name}</span></div>
+      <div class="final-row">Level: <span>${player.level}</span></div>
+      <div class="final-row">Gold: <span>${player.gold}</span></div>
+      <div class="final-row">XP: <span>${player.xp}</span></div>
+    </div>
+    <br>
+    <button class="menu-btn" onclick="location.reload()">▶ PLAY AGAIN</button>`;
+  showScreen('screen-end');
+}
+
+function gameOver() {
+  localStorage.removeItem('isaac_delve_save');
+  document.getElementById('hud').style.display = 'none';
+  const content = document.getElementById('end-content');
+  content.innerHTML = `
+    <div class="end-title lose">💀 GAME OVER 💀</div>
+    <p style="font-size:22px;color:var(--text2);margin-bottom:16px;">You fell in the dungeon...</p>
+    <div class="final-stats">
+      <div class="final-row">Hero: <span>${player.name}</span></div>
+      <div class="final-row">Class: <span>${player.class_name}</span></div>
+      <div class="final-row">Level: <span>${player.level}</span></div>
+      <div class="final-row">Floor: <span>${player.floor}/7</span></div>
+      <div class="final-row">Gold: <span>${player.gold}</span></div>
+    </div>
+    <br>
+    <button class="menu-btn" onclick="location.reload()">▶ TRY AGAIN</button>`;
+  showScreen('screen-end');
+}
+
+// ================================================================
+// INIT
+// ================================================================
+
+document.getElementById('btn-continue').className =
+  'menu-btn' + (hasSave() ? '' : ' disabled');
+
+// Enter key on name field
+document.getElementById('player-name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    // focus first class card (just a hint)
+    document.querySelector('.class-card').focus();
+  }
+});
+</script>
+</body>
+</html>
