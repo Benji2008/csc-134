@@ -17,6 +17,7 @@ void question4();
 void question5();
 void question6();
 
+//rainfall of the mont Calculator
 void question1() {
     string month1, month2, month3;
     double rain1, rain2, rain3;
@@ -42,6 +43,7 @@ void question1() {
     cout << "The average rainfall for " << month1 << ", " << month2 << ", and " << month3 << " is " << average << " inches." << endl;
 }
 
+//volume of a block
 void question2() {
     double width, length, height;
 
@@ -86,6 +88,7 @@ void question3() {
     }
 }
 
+//Geometry Calculator
 void question4() {
     int choice;
 
@@ -145,7 +148,7 @@ void question4() {
             return;
     }
 }
-
+//speed and distance
 void question5() {
     double speed;
     int hours;
@@ -173,7 +176,6 @@ void question5() {
 }
 
 //question 6
-void question6();
 int main() {
     int choice;
     
