@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FUNHOUSE — Don't Play Alone</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#000; overflow:hidden; font-family:'Courier New',monospace; }
+#gameCanvas { display:block; width:100vw; height:100vh; }
+#ui { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; }
+#crosshair { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:16px; height:16px; }
+#crosshair::before,#crosshair::after { content:''; position:absolute; background:rgba(255,180,180,0.7); }
+#crosshair::before { width:1px; height:100%; left:50%; transform:translateX(-50%); }
+#crosshair::after { height:1px; width:100%; top:50%; transform:translateY(-50%); }
+#hud { position:absolute; bottom:24px; left:24px; color:#ff9999; font-size:13px; letter-spacing:1px; }
+#hud .row { margin:5px 0; }
+.ks { display:inline-block; width:16px; height:16px; border:1px solid #ff5555; border-radius:2px; margin-right:5px; vertical-align:middle; }
+.ks.got { background:#ffcc00; border-color:#ffcc00; }
+#stamwrap { position:absolute; bottom:24px; right:24px; text-align:right; }
+#stamlabel { color:#884444; font-size:10px; letter-spacing:2px; margin-bottom:4px; }
+#stambar { width:110px; height:6px; background:#1a0000; border:1px solid #440000; border-radius:3px; overflow:hidden; }
+#stamfill { height:100%; background:#cc2222; border-radius:3px; transition:width 0.08s; }
+#roomlabel { position:absolute; top:18px; left:50%; transform:translateX(-50%); color:rgba(255,80,80,0.5); font-size:10px; letter-spacing:5px; text-transform:uppercase; }
+#controls { position:absolute; top:18px; right:18px; color:#3a2222; font-size:10px; line-height:1.9; letter-spacing:1px; text-align:right; }
+#iprompt { position:absolute; bottom:120px; left:50%; transform:translateX(-50%); color:#ffaa77; font-size:11px; letter-spacing:2px; background:rgba(0,0,0,0.75); padding:5px 14px; border:1px solid #442222; display:none; }
+#dialog { position:absolute; bottom:70px; left:50%; transform:translateX(-50%); width:580px; max-width:92vw; background:rgba(8,0,0,0.93); border:1px solid #770000; padding:14px 18px; color:#ffcccc; font-size:13px; line-height:1.7; display:none; pointer-events:all; }
+#dlg-who { color:#ff5555; font-size:11px; letter-spacing:3px; margin-bottom:5px; }
+#dlg-txt { min-height:36px; }
+#dlg-more { color:#aa2222; font-size:10px; margin-top:8px; text-align:right; animation:blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+#vignette { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; box-shadow:inset 0 0 80px rgba(255,0,0,0); transition:box-shadow 0.3s; }
+#vignette.scared { box-shadow:inset 0 0 120px rgba(255,0,0,0.55); }
+#catchflash { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,0,0,0); pointer-events:none; transition:background 0.1s; }
+#catchflash.flash { background:rgba(255,0,0,0.5); }
+#monsterstatus { position:absolute; top:60px; left:50%; transform:translateX(-50%); color:#aa0000; font-size:10px; letter-spacing:3px; opacity:0; transition:opacity 0.5s; }
+#monsterstatus.show { opacity:1; }
+#strikebar { position:absolute; top:18px; left:18px; color:#552222; font-size:10px; letter-spacing:2px; }
+.strike { display:inline-block; width:10px; height:10px; border:1px solid #552222; border-radius:50%; margin-right:4px; }
+.strike.hit { background:#cc0000; border-color:#cc0000; }
+/* START */
+#startscreen { position:absolute; top:0; left:0; width:100%; height:100%; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:200; pointer-events:all; }
+#startscreen h1 { color:#cc0000; font-size:52px; letter-spacing:10px; text-shadow:0 0 40px #ff0000; margin-bottom:8px; animation:flicker 3s infinite; }
+@keyframes flicker { 0%,95%,100%{opacity:1} 96%,98%{opacity:0.3} 97%,99%{opacity:0.8} }
+#startscreen .tagline { color:#ff7777; font-size:12px; letter-spacing:5px; margin-bottom:36px; }
+#startscreen .lore { color:#884444; font-size:12px; max-width:460px; text-align:center; line-height:2.1; margin-bottom:42px; }
+#startscreen button { background:#0a0000; border:1px solid #770000; color:#ff5555; padding:11px 38px; font-size:15px; font-family:'Courier New'; letter-spacing:5px; cursor:pointer; transition:all 0.25s; }
+#startscreen button:hover { background:#1a0000; border-color:#ff0000; color:#fff; box-shadow:0 0 20px rgba(255,0,0,0.3); }
+/* END */
+#endscreen { position:absolute; top:0; left:0; width:100%; height:100%; background:#000; display:none; flex-direction:column; align-items:center; justify-content:center; z-index:300; pointer-events:all; }
+#endscreen h1 { font-size:44px; letter-spacing:8px; margin-bottom:16px; }
+#endscreen.win h1 { color:#00ff88; text-shadow:0 0 30px #00ff88; }
+#endscreen.lose h1 { color:#cc0000; text-shadow:0 0 30px #ff0000; }
+#endscreen p { color:#888; font-size:13px; line-height:2.2; max-width:420px; text-align:center; margin-bottom:30px; white-space:pre-line; }
+#endscreen button { background:#0d0d0d; border:1px solid #333; color:#888; padding:9px 28px; font-family:'Courier New'; cursor:pointer; letter-spacing:3px; font-size:12px; }
+#endscreen button:hover { color:#ccc; border-color:#666; }
+/* MINIGAME */
+#mg { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.94); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:100; pointer-events:all; }
+#mg h2 { color:#ff5555; font-size:18px; letter-spacing:5px; margin-bottom:10px; }
+#mg .sub { color:#884444; font-size:12px; margin-bottom:28px; letter-spacing:1px; }
+.digits { display:flex; gap:10px; margin-bottom:26px; }
+.dg { width:52px; height:72px; border:2px solid #550000; background:#080000; display:flex; align-items:center; justify-content:center; font-size:38px; color:#ff3333; font-family:'Courier New'; cursor:pointer; user-select:none; }
+.dg:hover { border-color:#cc0000; background:#120000; }
+.dg.ok { border-color:#00cc55; color:#00cc55; }
+.dg.bad { border-color:#ff0000; animation:shk 0.3s; }
+@keyframes shk { 0%,100%{transform:translateX(0)} 30%{transform:translateX(-6px)} 70%{transform:translateX(6px)} }
+#mg-btn { background:#0a0000; border:1px solid #660000; color:#ff5555; padding:9px 28px; font-family:'Courier New'; font-size:13px; cursor:pointer; letter-spacing:3px; margin-bottom:12px; }
+#mg-btn:hover { background:#1a0000; }
+#mg-hint { color:#664444; font-size:11px; margin-top:8px; }
+#mg-esc { color:#333; font-size:10px; margin-top:8px; cursor:pointer; letter-spacing:2px; }
+#mg-esc:hover { color:#666; }
+/* NOTE */
+#notescreen { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.88); display:none; align-items:center; justify-content:center; z-index:100; pointer-events:all; }
+#notepaper { background:#120d04; border:1px solid #443322; padding:28px 36px; max-width:380px; color:#ccaa77; font-size:13px; line-height:2; font-family:'Courier New'; white-space:pre-line; }
+#notepaper h3 { color:#bb8844; margin-bottom:12px; letter-spacing:2px; font-size:12px; }
+#note-x { margin-top:18px; color:#664422; font-size:10px; cursor:pointer; text-align:center; letter-spacing:2px; }
+#note-x:hover { color:#aa7744; }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<div id="ui">
+  <div id="crosshair"></div>
+  <div id="vignette"></div>
+  <div id="catchflash"></div>
+  <div id="roomlabel">LOBBY</div>
+  <div id="strikebar"><span class="strike" id="s0"></span><span class="strike" id="s1"></span><span class="strike" id="s2"></span> CLOSE CALLS</div>
+  <div id="controls">WASD MOVE &nbsp; MOUSE LOOK<br>SHIFT SPRINT &nbsp; E INTERACT<br>ESC UNLOCK MOUSE</div>
+  <div id="hud">
+    <div class="row">KEYS &nbsp;<span class="ks" id="k0"></span><span class="ks" id="k1"></span><span class="ks" id="k2"></span></div>
+    <div class="row" id="coderow" style="display:none">CODE &nbsp;<span id="codeval" style="color:#ffcc00">7413</span></div>
+  </div>
+  <div id="stamwrap"><div id="stamlabel">STAMINA</div><div id="stambar"><div id="stamfill" style="width:100%"></div></div></div>
+  <div id="iprompt">[ E ] INTERACT</div>
+  <div id="monsterstatus">— HE SEES YOU —</div>
+  <div id="dialog">
+    <div id="dlg-who"></div>
+    <div id="dlg-txt"></div>
+    <div id="dlg-more">PRESS E TO CONTINUE ▼</div>
+  </div>
+</div>
+<!-- MINIGAME -->
+<div id="mg">
+  <h2>ENTER THE CODE</h2>
+  <div class="sub">Click digits to scroll. Enter the 4-digit code.</div>
+  <div class="digits">
+    <div class="dg" id="dg0">0</div><div class="dg" id="dg1">0</div>
+    <div class="dg" id="dg2">0</div><div class="dg" id="dg3">0</div>
+  </div>
+  <button id="mg-btn">SUBMIT</button>
+  <div id="mg-hint">Talk to the child in the crawl tunnels...</div>
+  <div id="mg-esc">[ ESC ] CLOSE</div>
+</div>
+<!-- NOTE -->
+<div id="notescreen">
+  <div id="notepaper">
+    <h3 id="note-title">NOTE</h3>
+    <div id="note-body"></div>
+    <div id="note-x">[ E ] CLOSE</div>
+  </div>
+</div>
+<!-- START -->
+<div id="startscreen">
+  <h1>FUNHOUSE</h1>
+  <div class="tagline">DON'T PLAY ALONE</div>
+  <div class="lore">
+    You came to Wally's Funhouse on a dare.<br>
+    It closed in 1987 when a child named Tommy vanished.<br>
+    They never found him. They never looked hard enough.<br><br>
+    Find the three keys. Get the exit code.<br>
+    <span style="color:#550000">Do not let him see you.</span>
+  </div>
+  <button id="startbtn">ENTER THE FUNHOUSE</button>
+</div>
+<!-- END -->
+<div id="endscreen">
+  <h1 id="end-h"></h1>
+  <p id="end-p"></p>
+  <button onclick="location.reload()">PLAY AGAIN</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ============================================================
+//  FUNHOUSE HORROR — rebuilt with open map + LOS monster
+//
+//  C++ architecture (ported to JS):
+//    struct AABB   { float cx,cz,hw,hd; }
+//    struct Player { vec3 pos; float yaw,pitch,stamina; }
+//    struct Monster{ vec3 pos; float yaw,speed; MonState state; bool canSee; }
+//    enum MonState { PATROL, ALERT, CHASE, SEARCH, RECOVER }
+//    bool LOS(vec3 from, vec3 to, AABB* walls, int n);
+//    void MonsterFSM(Monster&, Player&, AABB* walls, float dt);
+// ============================================================
+
+// --- RENDERER ---
+const canvas=document.getElementById('gameCanvas');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.toneMapping=THREE.ReinhardToneMapping;
+renderer.toneMappingExposure=0.65;
+window.addEventListener('resize',()=>{
+  renderer.setSize(innerWidth,innerHeight);
+  cam.aspect=innerWidth/innerHeight;
+  cam.updateProjectionMatrix();
+});
+
+// --- SCENE ---
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x060003,0.05);
+scene.background=new THREE.Color(0x040002);
+const cam=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.05,200);
+scene.add(cam);
+
+// --- MATERIALS ---
+function mat(c,r,e,ei){
+  return new THREE.MeshStandardMaterial({
+    color:c,roughness:r||0.9,metalness:0.05,
+    emissive:e||0,emissiveIntensity:ei||0
+  });
+}
+const M={
+  wall:  mat(0x2e1020,0.95),
+  wallB: mat(0x5a0818,0.9),
+  floor: mat(0x160a06,0.98),
+  ceil:  mat(0x0a0005,1.0),
+  wood:  mat(0x3a1c09,0.95),
+  metal: mat(0x1e1e1e,0.3),
+  red:   mat(0x880000,0.8,0x330000,0.4),
+  yellow:mat(0xbb8800,0.7,0x221100,0.3),
+  blue:  mat(0x0a2255,0.8,0x000a22,0.2),
+  slide: mat(0x7a3a18,0.65),
+  ballR: mat(0x992222,0.5,0x1a0000,0.1),
+  ballB: mat(0x224488,0.5),
+  ballG: mat(0x227722,0.5),
+  key:   mat(0xddaa00,0.25,0x443300,0.8),
+  skin:  mat(0xddaa66,0.75),
+  cloth: mat(0x334488,0.85),
+  hat:   mat(0x880000,0.85),
+  monB:  mat(0x0d0600,1.0,0x080000,0.3),
+  monE:  mat(0xffff00,0.05,0xffaa00,4.0),
+  sign:  mat(0x550000,0.8,0x220000,0.5),
+  panel: mat(0x112211,0.5,0x003300,0.8),
+  white: mat(0xddddcc,0.85),
+};
+
+// --- WORLD DATA ---
+const wallSegs=[];  // {cx,cz,hw,hd}  axis-aligned AABB
+const interactables=[];
+let npcMesh=null, monsterMesh=null;
+
+// --- GAME STATE ---
+const GS={
+  phase:'MENU', room:0,
+  keys:[false,false,false],
+  codeKnown:false, exitOpen:false,
+  caught:false, strikes:0,
+  gameTime:0, npcLine:0,
+  pickedUp:{}, interactTarget:null,
+};
+const CODE='7413';
+const dgVals=[0,0,0,0];
+
+// --- PLAYER ---
+const PL={
+  pos:new THREE.Vector3(0,1.7,8),
+  yaw:Math.PI, pitch:0, stamina:100,
+};
+const kd={};
+
+// --- MONSTER STATE MACHINE ---
+const MON={
+  pos:new THREE.Vector3(0,0,-6),
+  yaw:0,
+  state:'PATROL',
+  patrolPts:[
+    new THREE.Vector3(0,0,-6),
+    new THREE.Vector3(14,0,-8),
+    new THREE.Vector3(14,0,4),
+    new THREE.Vector3(0,0,6),
+    new THREE.Vector3(-14,0,4),
+    new THREE.Vector3(-14,0,-8),
+  ],
+  patrolIdx:0,
+  canSee:false,
+  alertTimer:0,
+  searchTimer:0,
+  searchTarget:new THREE.Vector3(),
+  lastSeen:new THREE.Vector3(),
+  recoverTimer:0,
+  stepT:0,
+  active:false,
+  PATROL_SPD:1.7,
+  CHASE_SPD:3.9,
+  ALERT_SPD:2.4,
+  FOV:Math.PI*0.55,   // half-angle = 99deg total
+  RANGE:15,
+};
+
+// ============================================================
+//  WORLD BUILDER — one big open space, four zones
+//  All rooms are connected without tight corridors.
+//  Pillars and low dividers create the funhouse feel.
+// ============================================================
+function buildWorld(){
+  // Floor & boundary walls
+  addFloor(0,-0.1,0,44,44);
+  addCeil(0,4.08,0,44,44);
+  // Outer walls (register for collision)
+  solidWall(44,4.2,0.3,  0,2.1,-22, 0);   // back wall
+  solidWall(44,4.2,0.3,  0,2.1, 22, 0);   // front wall
+  solidWall(0.3,4.2,44, -22,2.1,0,  0);   // left wall
+  solidWall(0.3,4.2,44,  22,2.1,0,  0);   // right wall
+
+  // ---- LOBBY (center) ----
+  // Welcome sign on back wall
+  prop(M.sign,8,1.4,0.1, 0,3.4,-21.9,0);
+  // Carnival pillar columns down the sides
+  for(let z=-18;z<=18;z+=7){ pillar(-21,2,z); pillar(21,2,z); }
+  // Low divider marking off zones (not blocking, just visual)
+  prop(M.red,0.15,2.5,14, 10,1.25,0,0);
+  prop(M.red,0.15,2.5,14,-10,1.25,0,0);
+  // Hanging dangling things near ceiling
+  for(let x=-8;x<=8;x+=4){
+    prop(M.red,  0.18,0.18,0.18, x,3.9,-10,0);
+    prop(M.yellow,0.18,0.18,0.18, x+2,3.85,-5,0);
+  }
+  // Ticket booth desks
+  prop(M.wood,2.5,1.1,1.0, -8,0.55,-18,0);
+  prop(M.wood,2.5,1.1,1.0,  8,0.55,-18,0);
+  // EXIT DOOR — back wall, center
+  const exitDoor=prop(M.metal,3.2,3.8,0.15, 0,1.9,-21.9,0);
+  exitDoor.name='exitdoor';
+  // Ambient detail
+  prop(M.yellow,0.4,0.4,0.4, -5,0.2,5,0);
+  prop(M.red,   0.4,0.4,0.4,  5,0.2,5,0);
+
+  // ---- BALL PIT ZONE (right side, x>10) ----
+  // Platform
+  prop(M.red,12,0.15,12, 16,0.5,0,0);
+  // Ball pit walls (short)
+  solidWall(12,1.2,0.2, 16,0.6,6,0);
+  solidWall(12,1.2,0.2, 16,0.6,-6,0);
+  solidWall(0.2,1.2,12, 22,0.6,0,0);
+  // Balls
+  const bGeo=new THREE.SphereGeometry(0.28,7,7);
+  const bMats=[M.ballR,M.ballB,M.ballG];
+  for(let i=0;i<40;i++){
+    const bm=new THREE.Mesh(bGeo,bMats[i%3]);
+    bm.position.set(11+Math.random()*10, 0.5+Math.random()*0.3, (Math.random()-0.5)*10);
+    scene.add(bm);
+  }
+  // Slide structure
+  prop(M.slide,3,0.2,10, 16,2.1,-8, 0,0,-0.4);
+  prop(M.wood, 3,4.5,0.2, 16,2.2,-13,0);
+  prop(M.wood, 3,0.2,4,  16,4.4,-11,0);
+  for(let i=0;i<9;i++) prop(M.metal,1.4,0.07,0.07, 14.5,0.3+i*0.5,-13,0);
+  // Clown painting
+  prop(M.red,4,3.6,0.06, 18,1.8,-21.9,0);
+  // KEY 0
+  addKey(0, 11, 0.85, -4);
+  // Note on ball pit wall
+  addNote('note0','Torn Ticket Stub',
+    'WALLY\'S FUNHOUSE\nSEASON PASS — 1987\n\n"He kept kids late.\nNobody asked why.\nWally always reversed\nhis numbers. Lucky 7413."\n   — scrawled on the back',
+    13, 1.0, 5.8);
+
+  // ---- SLIDE ROOM ZONE (left side, x<-10) ----
+  // Massive slide
+  prop(M.slide,3,0.2,12,-16,2.5,-4, 0,0,0.42);
+  prop(M.wood, 3,5.0,0.2,-16,2.5,-10,0);
+  prop(M.wood, 3,0.2,4, -16,5.0,-8,0);
+  for(let i=0;i<10;i++) prop(M.metal,1.4,0.07,0.07,-14.5,0.3+i*0.5,-10,0);
+  // Mirror panels
+  for(let i=0;i<5;i++) prop(M.white,0.04,3.2,2.8,-11+i*1.5,1.6,-18,0);
+  // Crawl tubes (decorative)
+  const tGeo=new THREE.CylinderGeometry(0.72,0.72,7,12);
+  const t1=new THREE.Mesh(tGeo,M.red); t1.rotation.z=Math.PI/2; t1.position.set(-16,0.72,10); scene.add(t1);
+  const t2=new THREE.Mesh(tGeo,M.blue);t2.rotation.z=Math.PI/2; t2.position.set(-16,0.72,17); scene.add(t2);
+  // Code panel on far left wall
+  const panelMesh=prop(M.panel,0.7,1.0,0.12, -21.85,1.5,-12,0);
+  panelMesh.name='codepanel';
+  panelMesh.userData.interact=true; panelMesh.userData.type='codepanel';
+  interactables.push(panelMesh);
+  const panelGlow=new THREE.PointLight(0x00ff44,2.5,3.5);
+  panelGlow.position.set(-21.5,1.5,-12); scene.add(panelGlow);
+  // KEY 1 — top of slide
+  addKey(1,-15.5,5.0,-8);
+
+  // ---- CRAWL TUNNEL ZONE (back, z<-10) ----
+  // Lower ceiling here (scary and tight)
+  prop(M.ceil,20,0.15,16, 0,1.4,-15,0);
+  // Dividing pillars (not full walls, just pillars)
+  pillar(-4,0.7,-12); pillar(4,0.7,-12);
+  pillar(-4,0.7,-18); pillar(4,0.7,-18);
+  // Short partial walls creating crawl feeling
+  solidWall(0.2,1.4,8,-8,0.7,-12,0);
+  solidWall(0.2,1.4,8, 8,0.7,-12,0);
+  // Creepy floor marks
+  prop(M.red,1.2,0.01,1.0, -3,0,-14,0);
+  prop(M.red,0.6,0.01,0.8,  5,0,-19,0);
+  // KEY 2 — deep in the tunnels
+  addKey(2,-6,0.8,-19);
+  // NPC ghost child
+  npcMesh=buildNPC(3,0,-14);
+
+  // ---- LIGHTS ----
+  scene.add(new THREE.AmbientLight(0x18080a,0.45));
+  // Lobby lights
+  pLight(0xff1111,2.0,14, 0,3.5,-12);
+  pLight(0xcc0808,1.5,10,-8,3.5,-12);
+  pLight(0xcc0808,1.5,10, 8,3.5,-12);
+  pLight(0xff1111,1.5,12, 0,3.5, 5);
+  // Ball pit
+  pLight(0xff4400,2.2,14,16,3.5, 0);
+  pLight(0xff2200,1.6,10,16,3.5,-10);
+  // Slide room
+  pLight(0x2244cc,2.0,14,-16,3.5, 0);
+  pLight(0x1133aa,1.6,10,-16,3.5,-10);
+  // Tunnel
+  pLight(0xff6600,1.5,8,  0,1.2,-12);
+  pLight(0xff3300,1.2,7, -5,1.2,-17);
+  pLight(0xff3300,1.2,7,  5,1.2,-17);
+}
+
+function addFloor(x,y,z,w,d){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,0.2,d),M.floor);
+  m.position.set(x,y,z); m.receiveShadow=true; scene.add(m);
+}
+function addCeil(x,y,z,w,d){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,0.2,d),M.ceil);
+  m.position.set(x,y,z); scene.add(m);
+}
+// solidWall — registers collision segment
+function solidWall(tw,th,td,x,y,z,ry){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(tw,th,td),M.wall);
+  m.position.set(x,y,z); m.rotation.y=ry||0;
+  m.receiveShadow=true; m.castShadow=true;
+  scene.add(m);
+  if(!ry||ry===0) wallSegs.push({cx:x,cz:z,hw:tw/2,hd:td/2});
+  return m;
+}
+function pillar(x,y,z){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(0.55,4.2,0.55),M.wallB);
+  m.position.set(x,y,z); m.castShadow=true; scene.add(m);
+  wallSegs.push({cx:x,cz:z,hw:0.28,hd:0.28});
+}
+function prop(mt,w,h,d,x,y,z,ry,rx,rz){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mt);
+  m.position.set(x,y,z); m.rotation.set(rx||0,ry||0,rz||0);
+  m.castShadow=true; m.receiveShadow=true; scene.add(m); return m;
+}
+function pLight(col,intensity,dist,x,y,z){
+  const l=new THREE.PointLight(col,intensity,dist);
+  l.position.set(x,y,z); scene.add(l); return l;
+}
+function addKey(idx,x,y,z){
+  const g=new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(0.45,0.09,0.09),M.key));
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.13,0.035,8,16),M.key);
+  ring.position.x=0.3; g.add(ring);
+  // teeth
+  [-0.05,-0.13,-0.21].forEach(xo=>{
+    const t=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.11,0.07),M.key);
+    t.position.set(xo,-0.07,0); g.add(t);
+  });
+  const kl=new THREE.PointLight(0xffcc00,2.2,2.8); g.add(kl);
+  g.position.set(x,y,z);
+  g.name='key'+idx;
+  g.userData.interact=true; g.userData.type='key'; g.userData.keyIdx=idx;
+  g.userData.baseY=y;
+  interactables.push(g); scene.add(g); return g;
+}
+function addNote(id,title,text,x,y,z){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.55,0.04),M.white);
+  m.position.set(x,y,z);
+  m.name=id; m.userData.interact=true; m.userData.type='note';
+  m.userData.title=title; m.userData.text=text;
+  interactables.push(m); scene.add(m); return m;
+}
+
+// ---- NPC ----
+function buildNPC(x,y,z){
+  const g=new THREE.Group();
+  const torso=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.9,0.35),M.cloth); torso.position.y=0.45; g.add(torso);
+  const head= new THREE.Mesh(new THREE.BoxGeometry(0.48,0.48,0.45),M.skin);  head.position.y=1.15;  g.add(head);
+  const ey=new THREE.BoxGeometry(0.09,0.065,0.05);
+  const em=new THREE.MeshStandardMaterial({color:0x111111});
+  const el=new THREE.Mesh(ey,em); el.position.set(-0.11,1.18,0.23); g.add(el);
+  const er=new THREE.Mesh(ey,em); er.position.set( 0.11,1.18,0.23); g.add(er);
+  const hat=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.24,0.35,8),M.hat); hat.position.y=1.55; g.add(hat);
+  g.position.set(x,y,z); g.name='npc';
+  g.userData.interact=true; g.userData.type='npc';
+  scene.add(g); return g;
+}
+
+// ---- MONSTER ----
+function buildMonster(){
+  const g=new THREE.Group();
+  // torso
+  const torso=new THREE.Mesh(new THREE.BoxGeometry(0.65,2.0,0.38),M.monB); torso.position.y=1.1; g.add(torso);
+  // arms
+  const aGeo=new THREE.BoxGeometry(0.14,1.9,0.14);
+  const aL=new THREE.Mesh(aGeo,M.monB); aL.position.set(-0.53,0.55,0.1); aL.rotation.z=0.18; g.add(aL);
+  const aR=new THREE.Mesh(aGeo,M.monB); aR.position.set( 0.53,0.55,0.1); aR.rotation.z=-0.18; g.add(aR);
+  // legs
+  const lGeo=new THREE.BoxGeometry(0.17,1.5,0.17);
+  const lL=new THREE.Mesh(lGeo,M.monB); lL.position.set(-0.22,-0.65,0); g.add(lL);
+  const lR=new THREE.Mesh(lGeo,M.monB); lR.position.set( 0.22,-0.65,0); g.add(lR);
+  // head
+  const hd=new THREE.Mesh(new THREE.BoxGeometry(0.58,0.88,0.48),M.monB); hd.position.y=2.35; g.add(hd);
+  // glowing eyes
+  const eGeo=new THREE.SphereGeometry(0.076,6,6);
+  const eL=new THREE.Mesh(eGeo,M.monE); eL.position.set(-0.14,2.38,0.25); g.add(eL);
+  const eR=new THREE.Mesh(eGeo,M.monE); eR.position.set( 0.14,2.38,0.25); g.add(eR);
+  const eyeLight=new THREE.PointLight(0xffaa00,2.5,4.5); eyeLight.position.set(0,2.38,0.5); g.add(eyeLight);
+  g.position.copy(MON.pos);
+  g.visible=false; scene.add(g); return g;
+}
+
+// ============================================================
+//  LINE-OF-SIGHT  —  ray vs axis-aligned wall segs
+//  Returns true = clear line of sight (no wall blocking)
+// ============================================================
+function lineOfSight(fx,fz,tx,tz){
+  const dx=tx-fx, dz=tz-fz;
+  const len=Math.sqrt(dx*dx+dz*dz);
+  if(len<0.01) return true;
+  const invDx=dx!==0?1/dx:1e10, invDz=dz!==0?1/dz:1e10;
+  for(const w of wallSegs){
+    const t1x=(w.cx-w.hw-fx)*invDx, t2x=(w.cx+w.hw-fx)*invDx;
+    const t1z=(w.cz-w.hd-fz)*invDz, t2z=(w.cz+w.hd-fz)*invDz;
+    const tEnter=Math.max(Math.min(t1x,t2x),Math.min(t1z,t2z));
+    const tLeave=Math.min(Math.max(t1x,t2x),Math.max(t1z,t2z));
+    if(tEnter<tLeave && tEnter>0.05 && tEnter<0.98) return false;
+  }
+  return true;
+}
+
+// ============================================================
+//  MONSTER FSM UPDATE
+// ============================================================
+function updateMonster(dt){
+  if(!MON.active){ monsterMesh.visible=false; return; }
+  monsterMesh.visible=true;
+  MON.stepT+=dt;
+
+  const mx=MON.pos.x, mz=MON.pos.z;
+  const px=PL.pos.x,  pz=PL.pos.z;
+  const dx=px-mx, dz=pz-mz;
+  const dist=Math.sqrt(dx*dx+dz*dz);
+
+  // --- Line-of-sight calculation ---
+  // 1. Distance check
+  // 2. Field-of-view cone check
+  // 3. Wall occlusion check (LOS ray cast)
+  const monFwdX=-Math.sin(MON.yaw), monFwdZ=-Math.cos(MON.yaw);
+  const tpLen=dist>0.01?dist:0.01;
+  const dotFOV=(dx/tpLen)*monFwdX+(dz/tpLen)*monFwdZ;
+  const inFOV=dotFOV>Math.cos(MON.FOV);
+  const inRange=dist<MON.RANGE;
+  MON.canSee = inRange && inFOV && lineOfSight(mx,mz,px,pz);
+
+  // --- State machine transitions ---
+  if(MON.state==='PATROL'){
+    if(MON.canSee){ MON.state='ALERT'; MON.alertTimer=0.7; MON.lastSeen.set(px,0,pz); }
+  } else if(MON.state==='ALERT'){
+    MON.alertTimer-=dt;
+    if(MON.canSee){ MON.lastSeen.set(px,0,pz); }
+    if(!MON.canSee){ MON.state='PATROL'; }
+    else if(MON.alertTimer<=0){ MON.state='CHASE'; }
+  } else if(MON.state==='CHASE'){
+    if(MON.canSee){ MON.lastSeen.set(px,0,pz); }
+    else{ MON.state='SEARCH'; MON.searchTimer=6.0; MON.searchTarget.copy(MON.lastSeen); }
+  } else if(MON.state==='SEARCH'){
+    MON.searchTimer-=dt;
+    if(MON.canSee){ MON.state='CHASE'; }
+    else if(MON.searchTimer<=0){ MON.state='PATROL'; }
+  } else if(MON.state==='RECOVER'){
+    MON.recoverTimer-=dt;
+    if(MON.recoverTimer<=0){ MON.state='PATROL'; }
+  }
+
+  // --- Movement ---
+  let tgtX=mx, tgtZ=mz, spd=0;
+  if(MON.state==='PATROL'){
+    const pt=MON.patrolPts[MON.patrolIdx];
+    tgtX=pt.x; tgtZ=pt.z; spd=MON.PATROL_SPD;
+    const pd2=Math.sqrt((tgtX-mx)**2+(tgtZ-mz)**2);
+    if(pd2<1.5) MON.patrolIdx=(MON.patrolIdx+1)%MON.patrolPts.length;
+  } else if(MON.state==='ALERT'){
+    tgtX=px; tgtZ=pz; spd=0.6;
+  } else if(MON.state==='CHASE'){
+    tgtX=px; tgtZ=pz; spd=MON.CHASE_SPD+(dist<6?1.4:0);
+  } else if(MON.state==='SEARCH'){
+    tgtX=MON.searchTarget.x; tgtZ=MON.searchTarget.z; spd=MON.ALERT_SPD;
+    const sd=Math.sqrt((tgtX-mx)**2+(tgtZ-mz)**2);
+    if(sd<2){ MON.searchTarget.x+=((Math.random()-0.5)*8); MON.searchTarget.z+=((Math.random()-0.5)*8); }
+  }
+  if(spd>0){
+    const ddx=tgtX-mx, ddz=tgtZ-mz;
+    const dl=Math.sqrt(ddx*ddx+ddz*ddz);
+    if(dl>0.1){
+      const nx=ddx/dl, nz=ddz/dl;
+      MON.pos.x+=nx*spd*dt;
+      MON.pos.z+=nz*spd*dt;
+      MON.yaw=Math.atan2(nx,nz);
+    }
+  }
+  // Clamp monster to bounds
+  MON.pos.x=Math.max(-21,Math.min(21,MON.pos.x));
+  MON.pos.z=Math.max(-21,Math.min(21,MON.pos.z));
+
+  // Walk bob + position sync
+  const bobAmt=(MON.state==='CHASE'?0.22:0.07);
+  const bobSpd=(MON.state==='CHASE'?9:4);
+  monsterMesh.position.set(MON.pos.x, Math.abs(Math.sin(MON.stepT*bobSpd))*bobAmt, MON.pos.z);
+  monsterMesh.rotation.y=MON.yaw;
+
+  // CATCH — only during chase AND within 1.4 units
+  if(dist<1.4 && MON.state==='CHASE') doCatch();
+
+  // HUD
+  const vig=document.getElementById('vignette');
+  const ms=document.getElementById('monsterstatus');
+  if(MON.canSee && MON.state==='CHASE'){ vig.className='scared'; ms.className='show'; }
+  else if(MON.state==='ALERT'){ vig.className='scared'; ms.className=''; }
+  else { vig.className=''; ms.className=''; }
+}
+
+// ============================================================
+//  CATCH — scare + knockback, NOT instant death
+// ============================================================
+let catchCD=0;
+function doCatch(){
+  if(GS.caught||catchCD>0) return;
+  GS.strikes++;
+  catchCD=4.5;
+  // Flash
+  const cf=document.getElementById('catchflash');
+  cf.classList.add('flash');
+  setTimeout(()=>cf.classList.remove('flash'),200);
+  // Push player away
+  const awayX=PL.pos.x-MON.pos.x, awayZ=PL.pos.z-MON.pos.z;
+  const aLen=Math.sqrt(awayX*awayX+awayZ*awayZ)||1;
+  PL.pos.x+=(awayX/aLen)*6;
+  PL.pos.z+=(awayZ/aLen)*6;
+  PL.pos.x=Math.max(-21,Math.min(21,PL.pos.x));
+  PL.pos.z=Math.max(-21,Math.min(21,PL.pos.z));
+  // Reset monster far away
+  MON.state='RECOVER'; MON.recoverTimer=3.5;
+  MON.pos.set(0,0,8);
+  monsterMesh.position.copy(MON.pos);
+  // Update strike UI
+  updateStrikes();
+  if(GS.strikes>=3){ GS.caught=true; endGame(false); return; }
+  showDialog('!!!',`He got you. You stumble back. ${3-GS.strikes} warning${3-GS.strikes===1?'':'s'} left before it's over.`,null,2800);
+}
+function updateStrikes(){
+  for(let i=0;i<3;i++) document.getElementById('s'+i).className='strike'+(i<GS.strikes?' hit':'');
+}
+
+// ============================================================
+//  COLLISION — AABB player vs wall segments
+// ============================================================
+function checkCollision(){
+  const R=0.38;
+  for(const w of wallSegs){
+    const ox=w.hw+R-Math.abs(PL.pos.x-w.cx);
+    const oz=w.hd+R-Math.abs(PL.pos.z-w.cz);
+    if(ox>0&&oz>0){
+      if(ox<oz) PL.pos.x+=Math.sign(PL.pos.x-w.cx)*ox;
+      else       PL.pos.z+=Math.sign(PL.pos.z-w.cz)*oz;
+    }
+  }
+  PL.pos.x=Math.max(-21.5,Math.min(21.5,PL.pos.x));
+  PL.pos.z=Math.max(-21.5,Math.min(21.5,PL.pos.z));
+  PL.pos.y=1.7;
+}
+
+// ============================================================
+//  PLAYER MOVEMENT
+// ============================================================
+let mouseLocked=false;
+canvas.addEventListener('click',()=>{ if(GS.phase==='PLAYING') canvas.requestPointerLock(); });
+document.addEventListener('pointerlockchange',()=>{ mouseLocked=document.pointerLockElement===canvas; });
+document.addEventListener('mousemove',e=>{
+  if(!mouseLocked||GS.phase!=='PLAYING') return;
+  PL.yaw-=e.movementX*0.0022;
+  PL.pitch=Math.max(-1.1,Math.min(0.9,PL.pitch-e.movementY*0.0022));
+});
+window.addEventListener('keydown',e=>{ kd[e.code]=true; handleKey(e); });
+window.addEventListener('keyup',e=>{ kd[e.code]=false; });
+
+function updatePlayer(dt){
+  if(GS.phase!=='PLAYING') return;
+  if(catchCD>0) catchCD-=dt;
+  const sprint=kd['ShiftLeft']&&PL.stamina>0;
+  PL.stamina=sprint?Math.max(0,PL.stamina-28*dt):Math.min(100,PL.stamina+18*dt);
+  document.getElementById('stamfill').style.width=PL.stamina+'%';
+  const spd=sprint?5.0:3.0;
+  const fx=-Math.sin(PL.yaw), fz=-Math.cos(PL.yaw);
+  const rx= Math.cos(PL.yaw), rz=-Math.sin(PL.yaw);
+  let mx=0, mz=0;
+  if(kd['KeyW']||kd['ArrowUp'])   { mx+=fx; mz+=fz; }
+  if(kd['KeyS']||kd['ArrowDown']) { mx-=fx; mz-=fz; }
+  if(kd['KeyA']||kd['ArrowLeft']) { mx-=rx; mz-=rz; }
+  if(kd['KeyD']||kd['ArrowRight']){ mx+=rx; mz+=rz; }
+  const ml=Math.sqrt(mx*mx+mz*mz);
+  if(ml>0){ mx=(mx/ml)*spd*dt; mz=(mz/ml)*spd*dt; }
+  PL.pos.x+=mx; PL.pos.z+=mz;
+  checkCollision();
+  const bob=ml>0?Math.sin(GS.gameTime*9)*0.034:0;
+  cam.position.set(PL.pos.x,PL.pos.y+bob,PL.pos.z);
+  cam.rotation.order='YXZ';
+  cam.rotation.y=PL.yaw;
+  cam.rotation.x=PL.pitch;
+  // Room
+  if(PL.pos.x>10) GS.room=1;
+  else if(PL.pos.x<-10) GS.room=2;
+  else if(PL.pos.z<-10) GS.room=3;
+  else GS.room=0;
+  document.getElementById('roomlabel').textContent=['LOBBY','BALL PIT','SLIDE ROOM','CRAWL TUNNEL'][GS.room];
+  // Interact
+  checkInteract();
+}
+
+// ============================================================
+//  INTERACTION — raycaster + NPC proximity
+// ============================================================
+const ray=new THREE.Raycaster();
+function checkInteract(){
+  ray.setFromCamera(new THREE.Vector2(0,0),cam);
+  const hits=ray.intersectObjects(interactables,true);
+  let found=null;
+  if(hits.length>0&&hits[0].distance<2.8){
+    let obj=hits[0].object;
+    while(obj&&!obj.userData.interact) obj=obj.parent;
+    if(obj&&obj.userData.interact&&!GS.pickedUp[obj.name]) found=obj;
+  }
+  // NPC proximity
+  if(!found&&npcMesh){
+    const ndx=npcMesh.position.x-PL.pos.x, ndz=npcMesh.position.z-PL.pos.z;
+    if(Math.sqrt(ndx*ndx+ndz*ndz)<2.4) found=npcMesh;
+  }
+  // Exit door proximity (when eligible)
+  if(!found&&GS.exitOpen&&GS.keys.every(Boolean)){
+    const edx=PL.pos.x, edz=PL.pos.z+21;
+    if(Math.sqrt(edx*edx+edz*edz)<2.8) found={name:'exitdoor',userData:{interact:true,type:'exit'}};
+  }
+  GS.interactTarget=found;
+  document.getElementById('iprompt').style.display=found?'block':'none';
+}
+function handleKey(e){
+  if(e.code==='KeyE'){
+    if(GS.phase==='PLAYING'&&GS.interactTarget) doInteract(GS.interactTarget);
+    else if(GS.phase==='DIALOG') closeDialog();
+    else if(GS.phase==='NOTE'){ document.getElementById('notescreen').style.display='none'; GS.phase='PLAYING'; }
+  }
+  if(e.code==='Escape'){
+    if(GS.phase==='MINIGAME'){ document.getElementById('mg').style.display='none'; GS.phase='PLAYING'; }
+    if(GS.phase==='NOTE'){ document.getElementById('notescreen').style.display='none'; GS.phase='PLAYING'; }
+    if(GS.phase==='DIALOG') closeDialog();
+    if(GS.phase==='PLAYING') document.exitPointerLock();
+  }
+}
+function doInteract(obj){
+  const t=obj.userData.type;
+  if(t==='key') pickKey(obj);
+  else if(t==='note') openNote(obj);
+  else if(t==='npc') talkNPC();
+  else if(t==='codepanel') openMinigame();
+  else if(t==='exit') winGame();
+}
+
+// ============================================================
+//  KEY PICKUP
+// ============================================================
+function pickKey(obj){
+  const idx=obj.userData.keyIdx;
+  GS.keys[idx]=true; GS.pickedUp[obj.name]=true; obj.visible=false;
+  updateHUD();
+  const got=GS.keys.filter(Boolean).length;
+  showDialog('SYSTEM','Key collected. '+(3-got)+' remaining.',null,1800);
+  if(got===1&&!MON.active){
+    setTimeout(()=>{
+      MON.active=true;
+      showDialog('???','...something woke up. Heavy footsteps echo through the halls.',null,2500);
+    },3200);
+  }
+}
+function updateHUD(){
+  for(let i=0;i<3;i++) document.getElementById('k'+i).className='ks'+(GS.keys[i]?' got':'');
+}
+
+// ============================================================
+//  DIALOG
+// ============================================================
+let dlgCB=null, dlgTW=null, dlgAuto=null;
+function showDialog(who,txt,cb,auto){
+  GS.phase='DIALOG'; dlgCB=cb||null;
+  document.getElementById('dlg-who').textContent=who;
+  document.getElementById('dlg-txt').textContent='';
+  document.getElementById('dialog').style.display='block';
+  if(dlgTW) clearInterval(dlgTW);
+  let i=0;
+  dlgTW=setInterval(()=>{
+    if(i<txt.length) document.getElementById('dlg-txt').textContent+=txt[i++];
+    else clearInterval(dlgTW);
+  },20);
+  if(dlgAuto) clearTimeout(dlgAuto);
+  if(auto>0) dlgAuto=setTimeout(closeDialog,auto);
+}
+function closeDialog(){
+  if(dlgTW){clearInterval(dlgTW);dlgTW=null;}
+  if(dlgAuto){clearTimeout(dlgAuto);dlgAuto=null;}
+  document.getElementById('dialog').style.display='none';
+  const cb=dlgCB; dlgCB=null;
+  if(GS.phase==='DIALOG') GS.phase='PLAYING';
+  if(cb) cb();
+}
+
+// ============================================================
+//  NPC DIALOG TREE
+// ============================================================
+const NPC=[
+  ['STRANGE CHILD','...you can see me? Nobody has seen me for a long time.'],
+  ['STRANGE CHILD','This is Wally\'s Funhouse. He kept us here. The front door — you need THREE KEYS to open it. They\'re hidden in the rooms.'],
+  ['STRANGE CHILD','When you pick one up, something in the building wakes up. He patrols the halls. He can only chase you if he SEES you. Stay in the dark. Break his line of sight.'],
+  ['STRANGE CHILD','The slide room has a number panel on the far wall. You need a code. Wally loved 1987. But he always reversed his numbers. Think about what that means.'],
+  ['STRANGE CHILD','7413. That\'s the code. Wally\'s reversed year. Please. Get out of here.'],
+  ['STRANGE CHILD','...you should go. He\'s somewhere close.'],
+];
+function talkNPC(){
+  if(GS.npcLine>=NPC.length){ showDialog(NPC[NPC.length-1][0],NPC[NPC.length-1][1],null,2500); return; }
+  const [who,txt]=NPC[GS.npcLine++];
+  showDialog(who,txt,null,0);
+  if(GS.npcLine>=4){
+    GS.codeKnown=true;
+    document.getElementById('coderow').style.display='block';
+  }
+}
+
+// ============================================================
+//  NOTE
+// ============================================================
+function openNote(obj){
+  document.getElementById('note-title').textContent=obj.userData.title;
+  document.getElementById('note-body').textContent=obj.userData.text;
+  document.getElementById('notescreen').style.display='flex';
+  GS.phase='NOTE'; GS.pickedUp[obj.name]=true;
+}
+document.getElementById('note-x').addEventListener('click',()=>{
+  document.getElementById('notescreen').style.display='none';
+  if(GS.phase==='NOTE') GS.phase='PLAYING';
+});
+
+// ============================================================
+//  MINIGAME
+// ============================================================
+for(let i=0;i<4;i++){
+  document.getElementById('dg'+i).addEventListener('click',()=>{
+    if(GS.phase!=='MINIGAME') return;
+    dgVals[i]=(dgVals[i]+1)%10;
+    document.getElementById('dg'+i).textContent=dgVals[i];
+  });
+}
+document.getElementById('mg-btn').addEventListener('click',()=>{
+  const entered=dgVals.join('');
+  if(entered===CODE){
+    document.querySelectorAll('.dg').forEach(d=>d.classList.add('ok'));
+    setTimeout(()=>{
+      document.getElementById('mg').style.display='none';
+      GS.phase='PLAYING'; GS.exitOpen=true;
+      showDialog('SYSTEM','Code accepted. The EXIT is unlocked — back of the LOBBY. GO.',null,3000);
+    },900);
+  } else {
+    document.querySelectorAll('.dg').forEach(d=>d.classList.add('bad'));
+    setTimeout(()=>document.querySelectorAll('.dg').forEach(d=>d.classList.remove('bad')),380);
+    document.getElementById('mg-hint').textContent=GS.codeKnown?'HINT: 7413 — the child told you.':'Talk to the child in the crawl tunnels...';
+  }
+});
+document.getElementById('mg-esc').addEventListener('click',()=>{
+  document.getElementById('mg').style.display='none';
+  if(GS.phase==='MINIGAME') GS.phase='PLAYING';
+});
+function openMinigame(){
+  dgVals.fill(0);
+  for(let i=0;i<4;i++){ const d=document.getElementById('dg'+i); d.textContent='0'; d.className='dg'; }
+  document.getElementById('mg-hint').textContent=GS.codeKnown?'HINT: 7413 — reverse the year.':'Talk to the child in the crawl tunnels...';
+  document.getElementById('mg').style.display='flex'; GS.phase='MINIGAME';
+}
+
+// ============================================================
+//  WIN / LOSE
+// ============================================================
+function winGame(){
+  if(!GS.keys.every(Boolean)){ showDialog('SYSTEM','You need all 3 keys first.',null,2000); return; }
+  if(!GS.exitOpen){ showDialog('SYSTEM','The exit is sealed. Find the code panel in the slide room.',null,2500); return; }
+  GS.phase='WIN'; document.exitPointerLock();
+  const es=document.getElementById('endscreen');
+  es.className='win'; es.style.display='flex';
+  document.getElementById('end-h').textContent='YOU ESCAPED';
+  document.getElementById('end-p').textContent='You burst through the exit into cold night air.\nThe funhouse fell silent behind you.\nYou never looked back.\n\nSome games should never be played alone.';
+}
+function endGame(win){
+  GS.phase=win?'WIN':'LOSE'; document.exitPointerLock();
+  const es=document.getElementById('endscreen');
+  es.className=win?'win':'lose'; es.style.display='flex';
+  document.getElementById('end-h').textContent=win?'YOU ESCAPED':'HE FOUND YOU';
+  document.getElementById('end-p').textContent=win
+    ?'You burst through the exit into cold night air.\nThe funhouse fell silent.\nYou never looked back.'
+    :'Three times he found you.\nThree times was enough.\n\nThe funhouse has a new permanent guest.\nThe music plays on.';
+}
+
+// ============================================================
+//  GAME LOOP
+// ============================================================
+let lastT=0;
+function loop(t){
+  requestAnimationFrame(loop);
+  const dt=Math.min((t-lastT)/1000,0.05);
+  lastT=t;
+  if(GS.phase==='MENU'||GS.phase==='WIN'||GS.phase==='LOSE'){ renderer.render(scene,cam); return; }
+  GS.gameTime+=dt;
+  updatePlayer(dt);
+  updateMonster(dt);
+  // Animate keys
+  for(const obj of interactables){
+    if(obj.userData.type==='key'&&!GS.pickedUp[obj.name]){
+      obj.rotation.y+=dt*2.2;
+      obj.position.y=obj.userData.baseY+Math.sin(GS.gameTime*1.8)*0.06;
+    }
+  }
+  // NPC subtle sway
+  if(npcMesh) npcMesh.rotation.y=Math.sin(GS.gameTime*0.8)*0.15;
+  // Light flicker
+  if(Math.random()<0.003){
+    scene.traverse(o=>{
+      if(o.isPointLight){
+        const s=o.intensity;
+        o.intensity*=0.15+Math.random()*0.5;
+        setTimeout(()=>o.intensity=s,50+Math.random()*100);
+      }
+    });
+  }
+  renderer.render(scene,cam);
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+function initGame(){
+  while(scene.children.length) scene.remove(scene.children[0]);
+  wallSegs.length=0; interactables.length=0;
+  Object.assign(GS,{phase:'PLAYING',room:0,keys:[false,false,false],codeKnown:false,
+    exitOpen:false,caught:false,strikes:0,gameTime:0,npcLine:0,pickedUp:{},interactTarget:null});
+  PL.pos.set(0,1.7,8); PL.yaw=Math.PI; PL.pitch=0; PL.stamina=100;
+  MON.pos.set(0,0,-6); MON.yaw=0; MON.state='PATROL'; MON.active=false;
+  MON.patrolIdx=0; MON.stepT=0; MON.alertTimer=0; MON.searchTimer=0; MON.recoverTimer=0; MON.canSee=false;
+  catchCD=0; dgVals.fill(0);
+  buildWorld();
+  monsterMesh=buildMonster();
+  updateHUD(); updateStrikes();
+  ['endscreen','mg','notescreen'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('dialog').style.display='none';
+  document.getElementById('coderow').style.display='none';
+  document.getElementById('vignette').className='';
+  document.getElementById('monsterstatus').className='';
+  setTimeout(()=>{
+    showDialog('SYSTEM',
+      "Find 3 KEYS hidden across the funhouse. Get the CODE from the child in the crawl tunnels. Enter it on the panel in the SLIDE ROOM. Then escape through the EXIT at the back of the lobby. Don't let him SEE you.",
+      null,0);
+  },500);
+}
+
+document.getElementById('startbtn').addEventListener('click',()=>{
+  document.getElementById('startscreen').style.display='none';
+  initGame();
+  canvas.requestPointerLock();
+  requestAnimationFrame(t=>{ lastT=t; loop(t); });
+});
+</script>
+</body>
+</html>
