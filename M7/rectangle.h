@@ -27,13 +27,15 @@ public:
                 length = l;
     }
  void drawrectangle() {
-    string pixel = "🤖";
+    std::string pixel = "🤖";
     for (int i = 0; i < length; i++) {
         for (int j = 0; j < width; j++) {
             std::cout << pixel;
         }
-        std::cout << endl;
+        std::cout << std::endl;
+        }
     }
+    
 };
 
 
