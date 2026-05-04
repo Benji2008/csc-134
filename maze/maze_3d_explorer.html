@@ -1,0 +1,272 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+#wrap{width:100%;background:#0a0a0f;}
+canvas{display:block;width:100%;cursor:none;}
+#hud{position:absolute;top:0;left:0;width:100%;pointer-events:none;padding:10px 14px;display:flex;justify-content:space-between;align-items:flex-start;}
+#minimap{width:120px;height:120px;background:rgba(0,0,0,0.7);border:1px solid #334;border-radius:6px;}
+#info{font-family:monospace;font-size:12px;color:#8af;text-align:right;line-height:1.8;}
+#msg{position:absolute;bottom:0;left:0;width:100%;text-align:center;padding:8px;font-family:monospace;font-size:13px;color:#aaa;background:rgba(0,0,0,0.6);}
+#win{display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+#win p{font-family:monospace;font-size:22px;color:#1D9E75;}
+#win small{font-family:monospace;font-size:13px;color:#888;}
+#win button{font-family:monospace;font-size:14px;padding:8px 20px;background:#1D9E75;color:#fff;border:none;border-radius:6px;cursor:pointer;}
+#outer{position:relative;line-height:0;}
+</style>
+
+<h2 class="sr-only">3D first-person maze explorer. Use arrow keys or WASD to navigate. Reach the green exit to win.</h2>
+<div id="wrap">
+  <div id="outer">
+    <canvas id="c"></canvas>
+    <div id="hud">
+      <canvas id="minimap"></canvas>
+      <div id="info">
+        <div id="steps">steps: 0</div>
+        <div id="pos">pos: 0,0</div>
+      </div>
+    </div>
+    <div id="msg">arrow keys / WASD to move &amp; turn &nbsp;|&nbsp; find the green exit</div>
+    <div id="win">
+      <p>you escaped!</p>
+      <small id="winsteps"></small>
+      <button id="btnNew">new maze</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ROWS=12,COLS=12,CELL=64;
+const NORTH=1,SOUTH=2,EAST=4,WEST=8;
+const OFF={[NORTH]:[0,-1],[SOUTH]:[0,1],[EAST]:[1,0],[WEST]:[-1,0]};
+const OPP={[NORTH]:SOUTH,[SOUTH]:NORTH,[EAST]:WEST,[WEST]:EAST};
+
+let maze,px,py,angle,steps,exitR,exitC,won;
+
+function rnd(n){return Math.floor(Math.random()*n);}
+
+function build(){
+  maze=Array.from({length:ROWS},(_,r)=>Array.from({length:COLS},(_,c)=>({r,c,links:0})));
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const opts=[];
+      if(r>0)opts.push(NORTH);
+      if(c<COLS-1)opts.push(EAST);
+      if(opts.length){
+        const dir=opts[rnd(opts.length)];
+        const [dc,dr]=OFF[dir];
+        maze[r][c].links|=dir;
+        maze[r+dr][c+dc].links|=OPP[dir];
+      }
+    }
+  }
+}
+
+function dijkstra(sr,sc){
+  const dist=Array.from({length:ROWS},()=>new Array(COLS).fill(Infinity));
+  dist[sr][sc]=0;
+  const q=[[0,sr,sc]];
+  while(q.length){
+    q.sort((a,b)=>a[0]-b[0]);
+    const[d,r,c]=q.shift();
+    if(d>dist[r][c])continue;
+    for(const dir of[NORTH,SOUTH,EAST,WEST]){
+      if(!(maze[r][c].links&dir))continue;
+      const[dc,dr]=OFF[dir];
+      const nr=r+dr,nc=c+dc;
+      if(nr<0||nr>=ROWS||nc<0||nc>=COLS)continue;
+      if(d+1<dist[nr][nc]){dist[nr][nc]=d+1;q.push([d+1,nr,nc]);}
+    }
+  }
+  return dist;
+}
+
+function init(){
+  build();
+  px=0.5;py=0.5;angle=0;steps=0;won=false;
+  const d=dijkstra(0,0);
+  let mx=0;
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(d[r][c]>mx&&d[r][c]<Infinity){mx=d[r][c];exitR=r;exitC=c;}
+  document.getElementById('win').style.display='none';
+  document.getElementById('steps').textContent='steps: 0';
+  document.getElementById('pos').textContent='pos: 0,0';
+  sizeCanvas();
+  loop();
+}
+
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+const mm=document.getElementById('minimap');
+const mctx=mm.getContext('2d');
+mm.width=mm.height=240;
+
+function sizeCanvas(){
+  const w=canvas.parentElement.clientWidth||660;
+  const h=Math.round(w*0.56);
+  canvas.width=w;canvas.height=h;
+}
+
+const W=()=>canvas.width,H=()=>canvas.height;
+const FOV=Math.PI/2.5;
+const RAYS=()=>Math.max(120,Math.floor(W()/3));
+const MOVE=0.08,TURN=0.06;
+
+const keys={};
+document.addEventListener('keydown',e=>{
+  keys[e.key]=true;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
+});
+document.addEventListener('keyup',e=>{keys[e.key]=false;});
+
+function canMove(nx,ny){
+  const gr=Math.floor(py),gc=Math.floor(px);
+  const nr=Math.floor(ny),nc=Math.floor(nx);
+  if(nr<0||nr>=ROWS||nc<0||nc>=COLS)return false;
+  if(nr===gr&&nc===gc)return true;
+  const dr=nr-gr,dc=nc-gc;
+  if(dr===0&&dc===1)return !!(maze[gr][gc].links&EAST);
+  if(dr===0&&dc===-1)return !!(maze[gr][gc].links&WEST);
+  if(dr===1&&dc===0)return !!(maze[gr][gc].links&SOUTH);
+  if(dr===-1&&dc===0)return !!(maze[gr][gc].links&NORTH);
+  return false;
+}
+
+function castRay(a){
+  const cosA=Math.cos(a),sinA=Math.sin(a);
+  let t=0,hit=false,side=0;
+  const maxD=Math.sqrt(ROWS*ROWS+COLS*COLS);
+  for(let s=0;s<maxD*20;s++){
+    t+=0.04;
+    const rx=px+cosA*t,ry=py+sinA*t;
+    const gc=Math.floor(rx),gr=Math.floor(ry);
+    if(gc<0||gc>=COLS||gr<0||gr>=ROWS){hit=true;break;}
+    const fc=Math.floor(px),fr=Math.floor(py);
+    const dc=gc-fc,dr=gr-fr;
+    let blocked=false;
+    if(dc===1&&!(maze[fr][fc].links&EAST))blocked=true;
+    else if(dc===-1&&!(maze[fr][fc].links&WEST))blocked=true;
+    else if(dr===1&&!(maze[fr][fc].links&SOUTH))blocked=true;
+    else if(dr===-1&&!(maze[fr][fc].links&NORTH))blocked=true;
+    if(blocked){
+      const nx=rx-Math.floor(rx),ny=ry-Math.floor(ry);
+      side=(Math.abs(nx-0.5)<Math.abs(ny-0.5))?0:1;
+      hit=true;break;
+    }
+  }
+  return{dist:t,side};
+}
+
+function renderScene(){
+  const w=W(),h=H(),rays=RAYS();
+  ctx.fillStyle='#0d0d18';ctx.fillRect(0,0,w,h/2);
+  ctx.fillStyle='#1a1208';ctx.fillRect(0,h/2,w,h/2);
+
+  const colW=w/rays;
+  for(let i=0;i<rays;i++){
+    const rayA=angle-FOV/2+(FOV/rays)*i;
+    const{dist,side}=castRay(rayA);
+    const corr=dist*Math.cos(rayA-angle);
+    const wallH=Math.min(h,h/corr);
+    const top=(h-wallH)/2;
+    const bright=Math.max(0,1-corr/10);
+    const base=side===0?[80,55,120]:[60,40,100];
+    const r=Math.round(base[0]*bright);
+    const g=Math.round(base[1]*bright);
+    const b=Math.round(base[2]*bright+60*bright);
+    ctx.fillStyle=`rgb(${r},${g},${b})`;
+    ctx.fillRect(Math.round(i*colW),Math.round(top),Math.ceil(colW)+1,Math.round(wallH));
+  }
+
+  const ecx=(exitC+0.5),ecy=(exitR+0.5);
+  const dx=ecx-px,dy=ecy-py;
+  const localA=Math.atan2(dy,dx)-angle;
+  const norm=((localA+Math.PI*3)%(Math.PI*2))-Math.PI;
+  if(Math.abs(norm)<FOV/1.5){
+    const d=Math.sqrt(dx*dx+dy*dy);
+    const sh=Math.min(h*0.8,h/d);
+    const sx=w/2+Math.tan(norm)*(w/(2*Math.tan(FOV/2)));
+    const sy=(h-sh)/2;
+    ctx.fillStyle=`rgba(29,158,117,${Math.min(0.9,1/d)})`;
+    ctx.fillRect(sx-sh*0.15,sy,sh*0.3,sh);
+  }
+
+  ctx.fillStyle='rgba(255,255,255,0.6)';
+  ctx.fillRect(w/2-1,h/2-6,2,12);
+  ctx.fillRect(w/2-6,h/2-1,12,2);
+}
+
+function renderMinimap(){
+  const s=240/Math.max(ROWS,COLS);
+  mctx.clearRect(0,0,240,240);
+  mctx.fillStyle='rgba(0,0,0,0.01)';mctx.fillRect(0,0,240,240);
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const x=c*s,y=r*s;
+      mctx.strokeStyle='#334';mctx.lineWidth=1.5;
+      if(!(maze[r][c].links&NORTH)){mctx.beginPath();mctx.moveTo(x,y);mctx.lineTo(x+s,y);mctx.stroke();}
+      if(!(maze[r][c].links&SOUTH)){mctx.beginPath();mctx.moveTo(x,y+s);mctx.lineTo(x+s,y+s);mctx.stroke();}
+      if(!(maze[r][c].links&WEST)){mctx.beginPath();mctx.moveTo(x,y);mctx.lineTo(x,y+s);mctx.stroke();}
+      if(!(maze[r][c].links&EAST)){mctx.beginPath();mctx.moveTo(x+s,y);mctx.lineTo(x+s,y+s);mctx.stroke();}
+    }
+  }
+  mctx.fillStyle='#1D9E75';
+  mctx.fillRect(exitC*s+s*0.2,exitR*s+s*0.2,s*0.6,s*0.6);
+  mctx.save();
+  mctx.translate(px*s,py*s);
+  mctx.rotate(angle);
+  mctx.fillStyle='#f8c';
+  mctx.beginPath();
+  mctx.moveTo(0,-s*0.4);
+  mctx.lineTo(s*0.25,s*0.3);
+  mctx.lineTo(-s*0.25,s*0.3);
+  mctx.closePath();
+  mctx.fill();
+  mctx.restore();
+}
+
+let raf=null;
+function loop(){
+  if(raf)cancelAnimationFrame(raf);
+  if(won)return;
+  update();
+  renderScene();
+  renderMinimap();
+  raf=requestAnimationFrame(loop);
+}
+
+function update(){
+  const left=keys['ArrowLeft']||keys['a']||keys['A'];
+  const right=keys['ArrowRight']||keys['d']||keys['D'];
+  const fwd=keys['ArrowUp']||keys['w']||keys['W'];
+  const back=keys['ArrowDown']||keys['s']||keys['S'];
+
+  if(left)angle-=TURN;
+  if(right)angle+=TURN;
+
+  let moved=false;
+  if(fwd){
+    const nx=px+Math.cos(angle)*MOVE,ny=py+Math.sin(angle)*MOVE;
+    if(canMove(nx,py)){px=nx;moved=true;}
+    if(canMove(px,ny)){py=ny;moved=true;}
+  }
+  if(back){
+    const nx=px-Math.cos(angle)*MOVE,ny=py-Math.sin(angle)*MOVE;
+    if(canMove(nx,py)){px=nx;moved=true;}
+    if(canMove(px,ny)){py=ny;moved=true;}
+  }
+  if(moved){
+    steps++;
+    document.getElementById('steps').textContent='steps: '+steps;
+    document.getElementById('pos').textContent='pos: '+Math.floor(px)+','+Math.floor(py);
+    if(Math.floor(px)===exitC&&Math.floor(py)===exitR){
+      won=true;
+      const w=document.getElementById('win');
+      document.getElementById('winsteps').textContent='solved in '+steps+' steps';
+      w.style.display='flex';
+    }
+  }
+}
+
+document.getElementById('btnNew').onclick=init;
+window.addEventListener('resize',()=>{sizeCanvas();});
+init();
+</script>
