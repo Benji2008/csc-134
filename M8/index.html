@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Crypt Crawler</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="game-wrap">
+    <canvas id="game" width="800" height="600"></canvas>
+    <div id="hint">WASD = move &middot; Arrow keys = shoot &middot; P = pause</div>
+  </div>
+
+  <!-- Load order matters: leaves (no deps) first, glue (game.js) last. -->
+  <script src="js/constants.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/themes.js"></script>
+  <script src="js/items.js"></script>
+  <script src="js/projectile.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/enemy.js"></script>
+  <script src="js/boss.js"></script>
+  <script src="js/room.js"></script>
+  <script src="js/floors.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
