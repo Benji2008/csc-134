@@ -26,6 +26,8 @@ class Enemy {
     // Direction-facing for charger cue / walker eyes.
     this.faceX = 0;
     this.faceY = 1;
+    // Per-instance wobble seed — combined with time for low-fps twitch animation.
+    this.seed = Math.random() * 9999;
   }
 
   update(dt, room, player, projectiles, spawnQueue) {
@@ -66,63 +68,116 @@ class Enemy {
   }
 
   draw(ctx) {
+    // Drop shadow under the enemy so they sit on the floor properly.
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.ellipse(this.x, this.y + this.r * 0.95, this.r * 0.95, this.r * 0.32, 0, 0, Math.PI * 2);
+    ctx.fill();
+
     // Hit flash overrides body color for a few frames after taking damage.
     const flashing = this.hitFlash > 0;
+    const tSeed = twitchSeed(this.seed);
+
+    // Wobbly hand-drawn body.
     ctx.fillStyle = flashing ? C.COLOR_HIT_FLASH : this.color;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    pathWobblyCircle(ctx, this.x, this.y, this.r, tSeed);
     ctx.fill();
-    ctx.strokeStyle = '#1a1620';
-    ctx.lineWidth = 2;
+
+    // Underbelly shadow (clipped to body) — chunky 2-tone shading.
+    if (!flashing) {
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = 'rgba(20, 8, 14, 0.30)';
+      ctx.fillRect(this.x - this.r, this.y + this.r * 0.1, this.r * 2, this.r);
+      ctx.restore();
+    }
+
+    // Thick ink outline.
+    ctx.strokeStyle = '#0c0508';
+    ctx.lineWidth = 2.6;
+    pathWobblyCircle(ctx, this.x, this.y, this.r, tSeed);
     ctx.stroke();
+
     if (flashing) return; // hide details during flash so the flash reads cleanly
 
     // Per-kind detail layer — gives each enemy a readable silhouette.
     if (this.kind === 'walker' || this.kind === 'splitter') {
-      // Two angry eyes facing the player.
+      // Two big eyes facing the player. Slightly asymmetric.
       const ex = this.faceX, ey = this.faceY;
       const eyeOff = this.r * 0.45;
       const perpX = -ey, perpY = ex;
-      ctx.fillStyle = '#fff';
+      const eyeR = [this.r * 0.30, this.r * 0.26];
+      let i = 0;
       for (const sign of [-1, 1]) {
-        const ox = this.x + ex * eyeOff * 0.4 + perpX * sign * eyeOff * 0.6;
-        const oy = this.y + ey * eyeOff * 0.4 + perpY * sign * eyeOff * 0.6;
+        const ox = this.x + ex * eyeOff * 0.30 + perpX * sign * eyeOff * 0.70;
+        const oy = this.y + ey * eyeOff * 0.30 + perpY * sign * eyeOff * 0.70;
+        ctx.fillStyle = '#f4e8cf';
         ctx.beginPath();
-        ctx.arc(ox, oy, this.r * 0.18, 0, Math.PI * 2);
+        ctx.arc(ox, oy, eyeR[i], 0, Math.PI * 2);
         ctx.fill();
-      }
-      ctx.fillStyle = '#1a1620';
-      for (const sign of [-1, 1]) {
-        const ox = this.x + ex * eyeOff * 0.55 + perpX * sign * eyeOff * 0.6;
-        const oy = this.y + ey * eyeOff * 0.55 + perpY * sign * eyeOff * 0.6;
+        ctx.strokeStyle = '#0c0508';
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        // Pupil — small, panicked, shifted toward look direction.
+        ctx.fillStyle = '#0a0508';
         ctx.beginPath();
-        ctx.arc(ox, oy, this.r * 0.09, 0, Math.PI * 2);
+        ctx.arc(ox + ex * eyeR[i] * 0.4, oy + ey * eyeR[i] * 0.4, eyeR[i] * 0.45, 0, Math.PI * 2);
         ctx.fill();
+        i++;
       }
       if (this.kind === 'splitter') {
-        // Crack down the middle so the player can read "this one splits".
-        ctx.strokeStyle = '#1a1620';
-        ctx.lineWidth = 2;
+        // Asymmetric stitched seam — telegraphs "this one splits".
+        ctx.strokeStyle = '#0c0508';
+        ctx.lineWidth = 2.4;
         ctx.beginPath();
-        ctx.moveTo(this.x, this.y - this.r * 0.9);
-        ctx.lineTo(this.x, this.y + this.r * 0.9);
+        const top = this.y - this.r * 0.85;
+        const bot = this.y + this.r * 0.85;
+        ctx.moveTo(this.x - 1, top);
+        ctx.lineTo(this.x + 2, this.y - this.r * 0.4);
+        ctx.lineTo(this.x - 1, this.y);
+        ctx.lineTo(this.x + 2, this.y + this.r * 0.4);
+        ctx.lineTo(this.x - 1, bot);
         ctx.stroke();
+        // Stitch hashes across the seam.
+        ctx.lineWidth = 1.6;
+        for (let k = -2; k <= 2; k++) {
+          const sy = this.y + k * this.r * 0.35;
+          ctx.beginPath();
+          ctx.moveTo(this.x - 4, sy);
+          ctx.lineTo(this.x + 4, sy);
+          ctx.stroke();
+        }
       }
     } else if (this.kind === 'shooter') {
-      // Pulsing inner core to look like a turret charging up.
-      const pulse = 0.55 + 0.25 * Math.sin(this.t * 6);
-      ctx.fillStyle = '#1a1620';
+      // Big single cyclops eye, pulsing core inside. Drooling slightly.
+      const pulse = 0.55 + 0.30 * Math.sin(this.t * 6);
+      ctx.fillStyle = '#f4e8cf';
       ctx.beginPath();
-      ctx.arc(this.x, this.y, this.r * 0.65, 0, Math.PI * 2);
+      ctx.arc(this.x, this.y, this.r * 0.55, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = `rgba(255, 200, 240, ${pulse})`;
+      ctx.strokeStyle = '#0c0508';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      // Vertically-oriented pupil for "reptilian turret" feel.
+      ctx.fillStyle = '#0a0508';
       ctx.beginPath();
-      ctx.arc(this.x, this.y, this.r * 0.4, 0, Math.PI * 2);
+      ctx.ellipse(this.x + this.faceX * this.r * 0.18, this.y + this.faceY * this.r * 0.18,
+                  this.r * 0.14, this.r * 0.32, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Pulsing glow.
+      ctx.fillStyle = `rgba(255, 120, 200, ${pulse * 0.55})`;
+      ctx.beginPath();
+      ctx.arc(this.x + this.faceX * this.r * 0.18, this.y + this.faceY * this.r * 0.18, this.r * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+      // Drool drip beneath.
+      ctx.fillStyle = 'rgba(180, 80, 140, 0.65)';
+      ctx.beginPath();
+      ctx.arc(this.x + 4, this.y + this.r * 0.7, 2.2, 0, Math.PI * 2);
       ctx.fill();
     } else if (this.kind === 'charger') {
-      // A spike pointing in dash direction. Brighter while wound up.
-      const tip = this.dashing ? this.r * 1.3 : this.r * 0.95;
-      ctx.fillStyle = this.dashing ? '#fff7c2' : '#a36a26';
+      // A bony spike protruding in dash direction. Brighter while wound up.
+      const tip = this.dashing ? this.r * 1.35 : this.r * 0.98;
+      ctx.fillStyle = this.dashing ? '#fff0c0' : '#a87830';
       const px = this.x + this.faceX * tip;
       const py = this.y + this.faceY * tip;
       const perpX = -this.faceY, perpY = this.faceX;
@@ -133,9 +188,18 @@ class Enemy {
       ctx.lineTo(this.x - perpX * baseSize, this.y - perpY * baseSize);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#1a1620';
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#0c0508';
+      ctx.lineWidth = 1.8;
       ctx.stroke();
+      // Two eyes flanking the spike — eyeless charger but with sockets.
+      for (const sign of [-1, 1]) {
+        const ox = this.x + perpX * this.r * 0.55 * sign - this.faceX * this.r * 0.25;
+        const oy = this.y + perpY * this.r * 0.55 * sign - this.faceY * this.r * 0.25;
+        ctx.fillStyle = '#0a0508';
+        ctx.beginPath();
+        ctx.arc(ox, oy, this.r * 0.13, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 }

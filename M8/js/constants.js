@@ -65,3 +65,32 @@ const STATE = {
   GAME_OVER: 'gameover',
   VICTORY: 'victory',
 };
+
+// --- Hand-drawn circle helpers ---------------------------------------------
+// BoI's silhouettes look hand-inked: lumps, slightly uneven contours, never
+// mathematically perfect. These helpers set up a wobbly path that the caller
+// can fill/stroke however they want.
+//
+// `seed` controls jitter pattern. Pass a stable per-entity seed for a steady
+// silhouette, or `seed + Math.floor(performance.now() / 120)` for ~8fps twitch.
+function pathWobblyCircle(ctx, x, y, r, seed) {
+  const segs = 22;
+  ctx.beginPath();
+  for (let i = 0; i <= segs; i++) {
+    const a = (i / segs) * Math.PI * 2;
+    // Cheap hash so each "vertex" of the circle is jittered consistently.
+    const h = Math.sin((seed + i * 1.7) * 12.9898) * 43758.5453;
+    const j = (h - Math.floor(h)) - 0.5;       // -0.5..0.5
+    const rr = r + j * Math.max(1.4, r * 0.10); // ~10% wobble, min 1.4px
+    const px = x + Math.cos(a) * rr;
+    const py = y + Math.sin(a) * rr;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+// Slow time-stepped seed — flips every ~120ms so silhouettes twitch like BoI
+// limited-frame animation instead of shimmering at 60fps.
+function twitchSeed(baseSeed) {
+  return baseSeed + Math.floor(performance.now() / 120);
+}

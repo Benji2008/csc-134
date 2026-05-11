@@ -15,6 +15,7 @@ class Boss {
     this.t = 0;
     this.hitFlash = 0;
     this.s = {};
+    this.seed = Math.random() * 9999;
   }
 
   takeDamage(amount) {
@@ -29,13 +30,68 @@ class Boss {
   }
 
   draw(ctx) {
-    ctx.fillStyle = this.hitFlash > 0 ? C.COLOR_HIT_FLASH : this.color;
+    // Hefty drop shadow — bosses are big, looming things.
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.ellipse(this.x, this.y + this.r * 0.92, this.r * 1.0, this.r * 0.35, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#1a1620';
-    ctx.lineWidth = 3;
+
+    const tSeed = twitchSeed(this.seed);
+    ctx.fillStyle = this.hitFlash > 0 ? C.COLOR_HIT_FLASH : this.color;
+    pathWobblyCircle(ctx, this.x, this.y, this.r, tSeed);
+    ctx.fill();
+
+    // Underbelly shadow for 2-tone shading.
+    if (this.hitFlash <= 0) {
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = 'rgba(20, 4, 10, 0.32)';
+      ctx.fillRect(this.x - this.r, this.y + this.r * 0.1, this.r * 2, this.r);
+      ctx.restore();
+    }
+
+    ctx.strokeStyle = '#080306';
+    ctx.lineWidth = 3.4;
+    pathWobblyCircle(ctx, this.x, this.y, this.r, tSeed);
     ctx.stroke();
+
+    if (this.hitFlash > 0) return;
+
+    // Single huge cyclops eye on every boss — the "giant eye" of BoI bosses.
+    const eyeR = this.r * 0.34;
+    const ex = this.x - this.r * 0.05;
+    const ey = this.y - this.r * 0.18;
+    ctx.fillStyle = '#f4e8cf';
+    ctx.beginPath();
+    ctx.arc(ex, ey, eyeR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#080306';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    // Pupil shifts subtly with time — restless.
+    const px = ex + Math.sin(this.t * 0.8) * eyeR * 0.3;
+    const py = ey + Math.cos(this.t * 1.3) * eyeR * 0.3;
+    ctx.fillStyle = '#0a0508';
+    ctx.beginPath();
+    ctx.arc(px, py, eyeR * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Gash of a mouth at the bottom — rotten teeth telegraphing menace.
+    ctx.fillStyle = '#1a0a0a';
+    const mw = this.r * 0.55, mh = this.r * 0.22;
+    const mx = this.x - mw / 2;
+    const my = this.y + this.r * 0.30;
+    ctx.fillRect(mx, my, mw, mh);
+    ctx.strokeStyle = '#080306';
+    ctx.lineWidth = 1.8;
+    ctx.strokeRect(mx, my, mw, mh);
+    // Teeth.
+    ctx.fillStyle = '#d8c898';
+    const teeth = 4;
+    for (let i = 0; i < teeth; i++) {
+      const tx = mx + (i + 0.5) * (mw / teeth) - 1.5;
+      ctx.fillRect(tx, my, 3, mh * 0.55);
+    }
   }
 }
 

@@ -45,3 +45,23 @@ function spawnHitBurst(particles, x, y, baseColor) {
     ));
   }
 }
+
+// Chunky blood burst when something dies. Bigger, redder, longer-lived than
+// the bullet-hit burst — sells the "death animation explodes into gore" feel.
+function spawnGoreBurst(particles, x, y, opts = {}) {
+  const big = !!opts.big;
+  const n = big ? 24 : 14;
+  const colors = ['#8a1010', '#c81818', '#5a0a0a', '#a81414'];
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const speed = (big ? 140 : 100) + Math.random() * (big ? 220 : 160);
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    particles.push(new Particle(
+      x, y,
+      Math.cos(a) * speed, Math.sin(a) * speed,
+      color,
+      (big ? 600 : 420) + Math.random() * 300,
+      (big ? 4 : 3) + Math.random() * (big ? 5 : 4)
+    ));
+  }
+}

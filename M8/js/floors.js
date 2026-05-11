@@ -72,6 +72,12 @@ function buildFloor(floorIdx) {
       doors: [inDir, outDir],
       enemySpawns: scatter(palette.perRoom + (isLast ? 1 : 0)),
     });
+    // Scatter rocks + poop. Rock count scales with depth; poop is rarer.
+    if (typeof scatterObstaclesInto === 'function') {
+      const rocks = 1 + Math.floor(Math.random() * 3);    // 1..3
+      const poops = Math.random() < 0.6 ? 1 + Math.floor(Math.random() * 2) : 0; // 0..2
+      scatterObstaclesInto(e, rocks, poops);
+    }
     rooms.push(e);
     prevRoom.doors[prevOutDir].target = e.id;
     e.doors[inDir].target = prevRoom.id;
@@ -92,6 +98,7 @@ function buildFloor(floorIdx) {
   const enemyRooms = rooms.filter(r => r.kind === 'enemy');
   // Try each enemy room in random order until we find one with a free side.
   const order = enemyRooms.slice().sort(() => Math.random() - 0.5);
+  let treasureRoom = null;
   for (const candidate of order) {
     const used = Object.keys(candidate.doors);
     const free = dirs.filter(d => !used.includes(d));
@@ -108,9 +115,46 @@ function buildFloor(floorIdx) {
     rooms.push(treas);
     candidate.doors[branchDir].target = treas.id;
     treas.doors[treasInDir].target = candidate.id;
-    // Treasure side stays locked until the candidate enemy room is cleared,
-    // which the normal openDoors() flow will handle.
+    treasureRoom = treas;
     break;
+  }
+
+  // 5) Shop branch — similar to treasure, but with a paid pedestal trio.
+  //    Skip floor 1 to give the player a chance to gather coins first.
+  if (floorIdx >= 1) {
+    const order2 = enemyRooms.slice().sort(() => Math.random() - 0.5);
+    for (const candidate of order2) {
+      const used = Object.keys(candidate.doors);
+      const free = dirs.filter(d => !used.includes(d));
+      if (free.length === 0) continue;
+      const branchDir = free[Math.floor(Math.random() * free.length)];
+      candidate.doors[branchDir] = { target: null, opened: false };
+
+      const shopInDir = opp[branchDir];
+      const shop = new Room({
+        id: nextId++, kind: 'shop', doors: [shopInDir], enemySpawns: [],
+      });
+      shop.cleared = true;
+      shop.openDoors();
+
+      // Three slots laid out horizontally in the middle of the room.
+      const cy = (shop.top + shop.bottom) / 2;
+      const cx = (shop.left + shop.right) / 2;
+      const gap = 110;
+      // Item slot uses a fresh random item.
+      const pickedSoFar = treasureRoom ? [] : []; // best-effort; runtime fills items list
+      const itemDef = pickRandomItem([]);
+      shop.shopSlots = [
+        { x: cx - gap, y: cy, kind: 'heart', cost: 3,  taken: false },
+        { x: cx,       y: cy, kind: 'bomb',  cost: 5,  taken: false },
+        { x: cx + gap, y: cy, kind: 'item',  cost: 15, taken: false, itemId: itemDef.id },
+      ];
+
+      rooms.push(shop);
+      candidate.doors[branchDir].target = shop.id;
+      shop.doors[shopInDir].target = candidate.id;
+      break;
+    }
   }
 
   return {

@@ -25,6 +25,15 @@ class Player {
     this.vampireKillsNeeded = 0;    // 0 = vampire item not picked up
     this.vampireKills = 0;
 
+    // Pickups inventory.
+    this.coins = 0;
+    this.bombs = 1;
+    this.maxBombs = 9;
+    // Item-effect flags.
+    this.luckBoost = 1.0;            // multiplies enemy drop chance
+    this.pickupMagnet = false;       // pickups within range fly toward player
+    this.fastDiagonal = false;       // disables diagonal normalization
+
     // Runtime state
     this.iframes = 0;               // ms remaining
     this.fireCooldown = 0;
@@ -32,6 +41,17 @@ class Player {
     this.muzzleFlash = 0;
     // Items collected during this run (array of item ids), shown in HUD.
     this.items = [];
+
+    // Tears — Isaac is permanently crying. Each entry: {x,y,vx,vy,r,ttl,maxTtl}.
+    this.tears = [];
+    this.tearSpawnT = 0.4; // sec until next tear
+    this.tearSide = 1;     // alternates so both eyes weep
+
+    // Hand-drawn wobble: stable per-instance seed so the silhouette doesn't shimmer.
+    this.seed = Math.random() * 9999;
+    // Walk-cycle phase. Accumulates only while moving so idle is still.
+    this.walkT = 0;
+    this.moving = false;
   }
 
   update(dt, room, projectiles) {
@@ -45,13 +65,18 @@ class Player {
     if (Input.isDown('s')) dy += 1;
 
     // Normalize diagonals — pythagoras would otherwise let you go ~1.4x faster.
-    if (dx !== 0 && dy !== 0) {
+    // The Big Step item disables normalization for a speed-demon feel.
+    if (dx !== 0 && dy !== 0 && !this.fastDiagonal) {
       const inv = 1 / Math.sqrt(2);
       dx *= inv; dy *= inv;
     }
 
     this.x += dx * this.speed * dt;
     this.y += dy * this.speed * dt;
+
+    // Walk bob — phase advances while moving, freezes when idle.
+    this.moving = (dx !== 0 || dy !== 0);
+    if (this.moving) this.walkT += dt * 11;
 
     // Clamp to room bounds.
     if (this.x < room.left + this.r)   this.x = room.left + this.r;
@@ -81,6 +106,35 @@ class Player {
     // --- timers ---
     if (this.iframes > 0) this.iframes -= dt * 1000;
     if (this.muzzleFlash > 0) this.muzzleFlash -= dt * 1000;
+
+    // --- tears: spawn + advance ---
+    this.tearSpawnT -= dt;
+    if (this.tearSpawnT <= 0) {
+      // Drop from one of the two eyes (alternates).
+      const ex = this.lookX, ey = this.lookY;
+      const off = this.r * 0.4;
+      const perpX = -ey, perpY = ex;
+      const sign = this.tearSide;
+      const tx = this.x + ex * off * 0.55 + perpX * sign * off * 0.6;
+      const ty = this.y + ey * off * 0.55 + perpY * sign * off * 0.6 + 2;
+      this.tears.push({
+        x: tx, y: ty,
+        vx: (Math.random() - 0.5) * 24,
+        vy: 40 + Math.random() * 20,
+        r: 2 + Math.random() * 1.2,
+        ttl: 650, maxTtl: 650,
+      });
+      this.tearSide = -this.tearSide;
+      this.tearSpawnT = 0.45 + Math.random() * 0.5;
+    }
+    for (const t of this.tears) {
+      t.x += t.vx * dt;
+      t.y += t.vy * dt;
+      t.vy += 240 * dt; // gravity
+      t.vx *= 0.96;
+      t.ttl -= dt * 1000;
+    }
+    this.tears = this.tears.filter(t => t.ttl > 0);
   }
 
   // Spawn 1+ projectiles based on the player's current shot pattern.
@@ -161,7 +215,7 @@ class Player {
       const t = this.muzzleFlash / 70;
       ctx.fillStyle = `rgba(255, 247, 194, ${0.45 * t})`;
       ctx.beginPath();
-      ctx.arc(this.x + this.lookX * (this.r + 4), this.y + this.lookY * (this.r + 4), 12 * t, 0, Math.PI * 2);
+      ctx.arc(this.x + this.lookX * (this.r + 4), this.y + this.lookY * (this.r + 4), 13 * t, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -169,38 +223,86 @@ class Player {
     const flickerOff = this.iframes > 0 && Math.floor(this.iframes / 80) % 2 === 0;
     if (flickerOff) return;
 
-    // Soft drop shadow.
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    // Walk bob — vertical bounce while moving. Stays anchored to ground (shadow).
+    const bobY = this.moving ? Math.sin(this.walkT) * 1.8 : 0;
+    const py = this.y + bobY;
+
+    // Soft drop shadow — stays on the ground regardless of bob.
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.beginPath();
-    ctx.ellipse(this.x, this.y + this.r * 0.85, this.r * 0.85, this.r * 0.3, 0, 0, Math.PI * 2);
+    ctx.ellipse(this.x, this.y + this.r * 0.95, this.r * 0.95, this.r * 0.32, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = this.iframes > 0 ? C.COLOR_PLAYER_IFRAME : C.COLOR_PLAYER;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    // Body — wobbly pale-flesh circle with thick dark outline.
+    // Color shifts slightly during iframes so hits read clearly.
+    const body = this.iframes > 0 ? '#fff4d4' : '#f0d8b0';
+    ctx.fillStyle = body;
+    pathWobblyCircle(ctx, this.x, py, this.r, this.seed);
     ctx.fill();
-    ctx.strokeStyle = '#1a1620';
-    ctx.lineWidth = 2;
+    // Soft underbelly shadow — 2-tone shading per BoI guide.
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = 'rgba(120, 70, 60, 0.32)';
+    ctx.fillRect(this.x - this.r, py + this.r * 0.15, this.r * 2, this.r);
+    ctx.restore();
+    // Thick ink outline.
+    ctx.strokeStyle = '#1a0d10';
+    ctx.lineWidth = 2.8;
+    pathWobblyCircle(ctx, this.x, py, this.r, this.seed);
     ctx.stroke();
 
-    // Two eyes pointing in the look direction.
+    // Big asymmetric Isaac eyes — huge, slightly different sizes per side.
     const ex = this.lookX, ey = this.lookY;
-    const off = this.r * 0.4;
+    const off = this.r * 0.42;
     const perpX = -ey, perpY = ex;
-    ctx.fillStyle = '#fff';
+    const eyeR = [this.r * 0.34, this.r * 0.30]; // asymmetric
+    const pupilR = [this.r * 0.16, this.r * 0.14];
+    let i = 0;
     for (const sign of [-1, 1]) {
+      const cxE = this.x + ex * off * 0.25 + perpX * sign * off * 0.7;
+      const cyE = py + ey * off * 0.25 + perpY * sign * off * 0.7;
+      // white of the eye
+      ctx.fillStyle = '#f8eed8';
       ctx.beginPath();
-      ctx.arc(this.x + ex * off * 0.4 + perpX * sign * off * 0.6,
-              this.y + ey * off * 0.4 + perpY * sign * off * 0.6,
-              3, 0, Math.PI * 2);
+      ctx.arc(cxE, cyE, eyeR[i], 0, Math.PI * 2);
       ctx.fill();
-    }
-    ctx.fillStyle = '#1a1620';
-    for (const sign of [-1, 1]) {
+      // dark eye outline
+      ctx.strokeStyle = '#1a0d10';
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+      // huge pupil shifted toward look direction
+      ctx.fillStyle = '#0a0508';
       ctx.beginPath();
-      ctx.arc(this.x + ex * off * 0.55 + perpX * sign * off * 0.6,
-              this.y + ey * off * 0.55 + perpY * sign * off * 0.6,
-              1.5, 0, Math.PI * 2);
+      ctx.arc(cxE + ex * eyeR[i] * 0.35, cyE + ey * eyeR[i] * 0.35, pupilR[i], 0, Math.PI * 2);
+      ctx.fill();
+      i++;
+    }
+
+    // Tiny mouth — crooked frown for that permanent BoI sadness.
+    ctx.strokeStyle = '#3a1818';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    const mx = this.x;
+    const my = py + this.r * 0.38;
+    ctx.moveTo(mx - 3, my + 1);
+    ctx.lineTo(mx, my - 0.5);
+    ctx.lineTo(mx + 3, my + 1);
+    ctx.stroke();
+
+    // Tears — glossy droplets dripping from the eyes.
+    for (const t of this.tears) {
+      const alpha = Math.min(1, t.ttl / t.maxTtl);
+      ctx.fillStyle = `rgba(140, 200, 235, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(30, 60, 90, ${alpha * 0.8})`;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+      // highlight pip
+      ctx.fillStyle = `rgba(240, 250, 255, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(t.x - t.r * 0.35, t.y - t.r * 0.35, t.r * 0.4, 0, Math.PI * 2);
       ctx.fill();
     }
   }

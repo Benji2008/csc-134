@@ -122,6 +122,125 @@ const ITEMS = [
     color: '#80f0d0',
     apply(p) { p.r = Math.max(8, p.r - 4); },
   },
+
+  // --- New items: stat trades + new-system interactions ----------------
+  {
+    id: 'cursed_skull',
+    name: 'Cursed Skull',
+    desc: '+2 damage, but lose 1 heart container',
+    color: '#d8d0c0',
+    apply(p) {
+      p.bulletDamage += 2;
+      p.maxHp = Math.max(2, p.maxHp - 2);
+      if (p.hp > p.maxHp) p.hp = p.maxHp;
+    },
+  },
+  {
+    id: 'lucky_foot',
+    name: "Lucky Foot",
+    desc: '+50% drop chance from enemies',
+    color: '#f0c890',
+    apply(p) { p.luckBoost = (p.luckBoost || 1.0) * 1.5; },
+  },
+  {
+    id: 'magnet',
+    name: 'Magnet',
+    desc: 'Coins and pickups fly toward you',
+    color: '#b0a0d8',
+    apply(p) { p.pickupMagnet = true; },
+  },
+  {
+    id: 'big_step',
+    name: 'Big Step',
+    desc: 'Diagonals are no longer slowed',
+    color: '#80c8ff',
+    apply(p) { p.fastDiagonal = true; },
+  },
+  {
+    id: 'sacred_heart',
+    name: 'Sacred Heart',
+    desc: '+1 max heart, piercing bullets, full heal',
+    color: '#ffd8a8',
+    apply(p) {
+      p.maxHp += 2;
+      p.hp = p.maxHp;
+      p.bulletPiercing = true;
+    },
+  },
+  {
+    id: 'cursed_eye',
+    name: 'Cursed Eye',
+    desc: '+30% fire rate, slightly slower bullets',
+    color: '#a040a0',
+    apply(p) {
+      p.fireCooldownMs *= 0.7;
+      p.bulletSpeed *= 0.9;
+    },
+  },
+  {
+    id: 'mystery_pill',
+    name: 'Mystery Pill',
+    desc: 'A random stat boost (or curse)',
+    color: '#90d8ff',
+    apply(p) {
+      const rolls = [
+        () => p.maxHp += 2,
+        () => p.speed *= 1.15,
+        () => p.bulletDamage += 1,
+        () => p.fireCooldownMs *= 0.85,
+        () => p.bulletSpeed *= 1.15,
+        () => p.r = Math.max(8, p.r - 2),
+        () => { p.speed *= 0.9; p.bulletDamage += 1; },
+        () => p.coins = (p.coins | 0) + 6,
+      ];
+      rolls[Math.floor(Math.random() * rolls.length)]();
+      if (p.hp > p.maxHp) p.hp = p.maxHp;
+    },
+  },
+  {
+    id: 'brittle_bones',
+    name: 'Brittle Bones',
+    desc: '+1 damage, but shorter i-frames',
+    color: '#e8e0c8',
+    apply(p) {
+      p.bulletDamage += 1;
+      p.iframesMax = Math.max(300, p.iframesMax - 250);
+    },
+  },
+  {
+    id: 'wooden_spoon',
+    name: 'Wooden Spoon',
+    desc: '+15% speed, +1 damage',
+    color: '#b08858',
+    apply(p) {
+      p.speed *= 1.15;
+      p.bulletDamage += 1;
+    },
+  },
+  {
+    id: 'halo',
+    name: 'Halo',
+    desc: 'Heal half a heart on entering a new room',
+    color: '#fff0a0',
+    apply(p) { p.haloHeal = true; },
+  },
+  {
+    id: 'pyromaniac',
+    name: 'Pyromaniac',
+    desc: 'Start with +3 bombs and a bigger blast',
+    color: '#ff8a3a',
+    apply(p) {
+      p.bombs = Math.min(p.maxBombs || 9, (p.bombs | 0) + 3);
+      p.bombBlastBoost = 1.4;
+    },
+  },
+  {
+    id: 'belt_of_holding',
+    name: 'Belt of Holding',
+    desc: 'Carry up to 18 bombs',
+    color: '#7a4a2a',
+    apply(p) { p.maxBombs = 18; },
+  },
 ];
 
 // Pick a random item the player hasn't picked up yet this run. If they've
