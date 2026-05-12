@@ -43,6 +43,13 @@ class Room {
     // Shop slots — only populated for kind==='shop'. Each slot has:
     //   { x, y, kind: 'heart'|'bomb'|'item', cost, itemId, taken }
     this.shopSlots = null;
+
+    // Grid coordinates used by the minimap. Assigned by buildFloor() as it
+    // walks the room graph.
+    this.gridX = 0;
+    this.gridY = 0;
+    // Has the player ever stood in this room? Used by the minimap.
+    this.visited = false;
   }
 
   // Drop a chunky multi-blob blood splat at (x,y). Called by the game loop
@@ -176,13 +183,15 @@ class Room {
     if (t.ambient) t.ambient(ctx, this);
 
     // --- Vignette over the playfield, BEFORE walls so it darkens floor only ---
+    // Soft so the room still reads bright; the CRT frame handles the heavy
+    // edge darkening if any.
     {
       const cx = (this.left + this.right) / 2;
       const cy = (this.top + this.bottom) / 2;
-      const grad = ctx.createRadialGradient(cx, cy, Math.min(this.width, this.height) * 0.25,
+      const grad = ctx.createRadialGradient(cx, cy, Math.min(this.width, this.height) * 0.30,
                                             cx, cy, Math.max(this.width, this.height) * 0.7);
       grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, 'rgba(0,0,0,0.55)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.22)');
       ctx.fillStyle = grad;
       ctx.fillRect(this.left, this.top, this.width, this.height);
     }
@@ -277,39 +286,202 @@ class Room {
     ctx.strokeRect(this.left, this.top, this.width, this.height);
 
     // --- Doors with stone frame + lintel ---
+    // Each door's appearance depends on what's on the other side: the boss
+    // door looks bloody and spiked, the treasure door is gilded, the shop
+    // door is bronzed. Default doors keep the original locked-stone look.
     for (const dir in this.doors) {
       const door = this.doors[dir];
       const r = this.doorRect(dir);
-      // Outer dark frame (stone surround).
-      ctx.fillStyle = '#0a0508';
+      const kind = door.targetKind; // 'boss' | 'treasure' | 'shop' | etc.
+
+      // Pick the palette by what's behind the door.
+      let outerFrame = '#0a0508';
+      let innerFrame = t.doorFrame;
+      let lockedBody = t.doorLocked;
+      let openBody   = t.doorOpen;
+      let studColor  = '#1a0c12';
+      let glowAccent = t.accent;
+      if (kind === 'boss') {
+        outerFrame = '#1a0306';
+        innerFrame = '#2a0608';
+        lockedBody = '#6a1018';
+        openBody   = '#a04050';
+        studColor  = '#0a0306';
+        glowAccent = '#ff3a3a';
+      } else if (kind === 'treasure') {
+        outerFrame = '#1a0a06';
+        innerFrame = '#3a2818';
+        lockedBody = '#a07830';
+        openBody   = '#e0c060';
+        studColor  = '#2a1808';
+        glowAccent = '#ffe890';
+      } else if (kind === 'shop') {
+        outerFrame = '#0a1014';
+        innerFrame = '#1a3030';
+        lockedBody = '#3a6a60';
+        openBody   = '#60a090';
+        studColor  = '#08181a';
+        glowAccent = '#ffe890';
+      }
+
+      // Outer frame (stone or charred bone for boss).
+      ctx.fillStyle = outerFrame;
       ctx.fillRect(r.x - 6, r.y - 6, r.w + 12, r.h + 12);
       // Inner frame.
-      ctx.fillStyle = t.doorFrame;
+      ctx.fillStyle = innerFrame;
       ctx.fillRect(r.x - 3, r.y - 3, r.w + 6, r.h + 6);
+      // A door visually reads as "closed" when the room isn't cleared yet
+      // OR when it has a lock that still needs a key.
+      const visuallyClosed = !door.opened || door.locked;
+
       // Door body.
-      ctx.fillStyle = door.opened ? t.doorOpen : t.doorLocked;
+      ctx.fillStyle = visuallyClosed ? lockedBody : openBody;
       ctx.fillRect(r.x, r.y, r.w, r.h);
-      if (!door.opened) {
-        // Iron studs at the corners + central lock.
-        ctx.fillStyle = '#1a0c12';
-        const studs = [
-          { sx: r.x + 4,         sy: r.y + 4 },
-          { sx: r.x + r.w - 5,   sy: r.y + 4 },
-          { sx: r.x + 4,         sy: r.y + r.h - 5 },
-          { sx: r.x + r.w - 5,   sy: r.y + r.h - 5 },
-        ];
-        for (const sd of studs) ctx.fillRect(sd.sx, sd.sy, 2, 2);
-        ctx.beginPath();
-        ctx.arc(r.x + r.w / 2, r.y + r.h / 2, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#3a1a1a';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
+
+      if (visuallyClosed) {
+        // Studs. Bosses get jagged spikes that poke outward; others get
+        // standard square iron studs.
+        if (kind === 'boss') {
+          // Triangular spikes along each long edge of the door.
+          ctx.fillStyle = '#d8c898';
+          ctx.strokeStyle = '#0a0306';
+          ctx.lineWidth = 1.2;
+          const horizontal = r.w > r.h;
+          const spikes = horizontal ? 5 : 4;
+          for (let i = 0; i < spikes; i++) {
+            const f = (i + 0.5) / spikes;
+            if (horizontal) {
+              const sx = r.x + f * r.w;
+              // top edge spikes
+              ctx.beginPath();
+              ctx.moveTo(sx - 3, r.y);
+              ctx.lineTo(sx,     r.y - 5);
+              ctx.lineTo(sx + 3, r.y);
+              ctx.closePath();
+              ctx.fill(); ctx.stroke();
+              // bottom edge spikes
+              ctx.beginPath();
+              ctx.moveTo(sx - 3, r.y + r.h);
+              ctx.lineTo(sx,     r.y + r.h + 5);
+              ctx.lineTo(sx + 3, r.y + r.h);
+              ctx.closePath();
+              ctx.fill(); ctx.stroke();
+            } else {
+              const sy = r.y + f * r.h;
+              ctx.beginPath();
+              ctx.moveTo(r.x,     sy - 3);
+              ctx.lineTo(r.x - 5, sy);
+              ctx.lineTo(r.x,     sy + 3);
+              ctx.closePath();
+              ctx.fill(); ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(r.x + r.w,     sy - 3);
+              ctx.lineTo(r.x + r.w + 5, sy);
+              ctx.lineTo(r.x + r.w,     sy + 3);
+              ctx.closePath();
+              ctx.fill(); ctx.stroke();
+            }
+          }
+          // Skull-ish centerpiece: dark socket pair + jagged mouth.
+          const cx = r.x + r.w / 2;
+          const cy = r.y + r.h / 2;
+          ctx.fillStyle = '#e0d0a0';
+          ctx.beginPath();
+          ctx.arc(cx, cy, Math.min(r.w, r.h) * 0.32, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#0a0306';
+          ctx.lineWidth = 1.4;
+          ctx.stroke();
+          // Eye sockets.
+          ctx.fillStyle = '#0a0306';
+          ctx.beginPath();
+          ctx.arc(cx - 3, cy - 1, 1.6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(cx + 3, cy - 1, 1.6, 0, Math.PI * 2);
+          ctx.fill();
+          // Jagged mouth.
+          ctx.fillRect(cx - 4, cy + 2, 8, 2);
+          // Blood drip down the front of the door.
+          ctx.fillStyle = '#4a0a0a';
+          ctx.beginPath();
+          ctx.arc(cx - 6, r.y + r.h * 0.85, 1.4, 0, Math.PI * 2);
+          ctx.arc(cx + 5, r.y + r.h * 0.92, 1.8, 0, Math.PI * 2);
+          ctx.arc(cx + 2, r.y + r.h * 0.98, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Iron studs at the corners + central lock (default look).
+          ctx.fillStyle = studColor;
+          const studs = [
+            { sx: r.x + 4,         sy: r.y + 4 },
+            { sx: r.x + r.w - 5,   sy: r.y + 4 },
+            { sx: r.x + 4,         sy: r.y + r.h - 5 },
+            { sx: r.x + r.w - 5,   sy: r.y + r.h - 5 },
+          ];
+          for (const sd of studs) ctx.fillRect(sd.sx, sd.sy, 2, 2);
+          ctx.beginPath();
+          ctx.arc(r.x + r.w / 2, r.y + r.h / 2, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#3a1a1a';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          // Treasure / shop emblem in the center over the lock.
+          if (kind === 'treasure' || kind === 'shop') {
+            ctx.font = 'bold 12px Courier New';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#0a0306';
+            ctx.fillText(kind === 'treasure' ? '★' : '$',
+                         r.x + r.w / 2 + 0.5, r.y + r.h / 2 + 1);
+            ctx.fillStyle = kind === 'treasure' ? '#ffe890' : '#f0d058';
+            ctx.fillText(kind === 'treasure' ? '★' : '$',
+                         r.x + r.w / 2, r.y + r.h / 2);
+          }
+        }
+
+        // Padlock + chain overlay when the door is key-locked.
+        // Drawn last so it sits on top of any kind-specific decoration.
+        if (door.locked) {
+          const cx = r.x + r.w / 2;
+          const cy = r.y + r.h / 2;
+          const horizontal = r.w > r.h;
+          // Chain — repeating ovals running across the door.
+          ctx.fillStyle = '#5a5a6a';
+          ctx.strokeStyle = '#0a0508';
+          ctx.lineWidth = 1.2;
+          const links = horizontal ? 5 : 4;
+          for (let i = 0; i < links; i++) {
+            const f = (i + 0.5) / links;
+            const lx = horizontal ? r.x + f * r.w : cx;
+            const ly = horizontal ? cy : r.y + f * r.h;
+            ctx.beginPath();
+            ctx.ellipse(lx, ly, horizontal ? 4 : 3, horizontal ? 3 : 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          }
+          // Padlock body in the center.
+          ctx.fillStyle = '#3a3040';
+          ctx.fillRect(cx - 4, cy - 2, 8, 8);
+          ctx.strokeStyle = '#0a0508';
+          ctx.lineWidth = 1.4;
+          ctx.strokeRect(cx - 4, cy - 2, 8, 8);
+          // Shackle (curved bar on top).
+          ctx.strokeStyle = '#7a7a8a';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.arc(cx, cy - 2, 3, Math.PI, 0);
+          ctx.stroke();
+          // Keyhole.
+          ctx.fillStyle = '#0a0508';
+          ctx.beginPath();
+          ctx.arc(cx, cy + 2, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
       } else {
-        // Glow color picks up the theme accent.
-        const accent = t.accent;
+        // Open: glowing inner panel. Boss/treasure doors keep their themed
+        // accent so you can still tell at a glance where each door leads.
         const pulse = 0.22 + 0.10 * Math.sin(performance.now() / 300);
-        ctx.fillStyle = hexToRgba(accent, pulse + 0.10);
+        ctx.fillStyle = hexToRgba(glowAccent, pulse + 0.10);
         ctx.fillRect(r.x + 2, r.y + 2, r.w - 4, r.h - 4);
       }
     }
@@ -382,6 +554,7 @@ class Room {
           let color = '#c89a30';
           if (slot.kind === 'heart') color = '#ff5a6f';
           else if (slot.kind === 'bomb') color = '#888899';
+          else if (slot.kind === 'key') color = '#e0b840';
           else if (slot.kind === 'item' && slot.itemId) {
             const it = findItemById(slot.itemId);
             if (it) color = it.color;
@@ -423,6 +596,28 @@ class Room {
             ctx.moveTo(slot.x, slot.y - 24);
             ctx.lineTo(slot.x + 4, slot.y - 30);
             ctx.stroke();
+          } else if (slot.kind === 'key') {
+            // Brass key — bow (round head with hole) + shaft + teeth.
+            const cyK = slot.y - 14;
+            ctx.fillStyle = '#e0b840';
+            ctx.beginPath();
+            ctx.arc(slot.x - 5, cyK, 5.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#0a0508';
+            ctx.lineWidth = 1.6;
+            ctx.stroke();
+            ctx.fillStyle = '#1a1018';
+            ctx.beginPath();
+            ctx.arc(slot.x - 5, cyK, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#e0b840';
+            ctx.fillRect(slot.x - 1, cyK - 2, 10, 4);
+            ctx.strokeStyle = '#0a0508';
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(slot.x - 1, cyK - 2, 10, 4);
+            ctx.fillStyle = '#e0b840';
+            ctx.fillRect(slot.x + 7, cyK + 2, 3, 3);
+            ctx.fillRect(slot.x + 4, cyK + 2, 2, 3);
           } else {
             // Random treasure orb.
             ctx.fillStyle = color;

@@ -4,23 +4,27 @@
 // tied to floorIdx so the difficulty curve stays predictable, but the room
 // graph and door directions reroll every run.
 
-function buildFloor(floorIdx) {
+function buildFloor(floorIdx, bossKindOverride) {
   // Per-floor enemy palette: which enemy kinds show up, and how many per room.
-  // Floors get progressively meaner.
+  // Floors get progressively meaner — new enemies are introduced gradually so
+  // the player can learn each one before the next shows up.
   const palettes = [
-    // Floor 1 — gentle intro. Walkers only.
-    { kinds: ['walker'], perRoom: 3 },
-    // Floor 2 — add shooters.
-    { kinds: ['walker', 'shooter'], perRoom: 4 },
-    // Floor 3 — add chargers.
-    { kinds: ['walker', 'shooter', 'charger'], perRoom: 4 },
-    // Floor 4 — add splitters and bigger groups.
-    { kinds: ['walker', 'shooter', 'charger', 'splitter'], perRoom: 5 },
+    // Floor 1 — gentle intro. Walkers + a few flies.
+    { kinds: ['walker', 'walker', 'walker', 'fly'], perRoom: 3 },
+    // Floor 2 — add shooters and more flies.
+    { kinds: ['walker', 'shooter', 'fly'], perRoom: 4 },
+    // Floor 3 — chargers and spitters join.
+    { kinds: ['walker', 'shooter', 'charger', 'spitter', 'fly'], perRoom: 4 },
+    // Floor 4 — splitters and bombers appear; bigger groups.
+    { kinds: ['walker', 'shooter', 'charger', 'splitter', 'bomber', 'spitter'], perRoom: 5 },
     // Floor 5 — full kit, packed rooms.
-    { kinds: ['walker', 'shooter', 'charger', 'splitter'], perRoom: 6 },
+    { kinds: ['walker', 'shooter', 'charger', 'splitter', 'bomber', 'spitter', 'fly'], perRoom: 6 },
   ];
   const palette = palettes[floorIdx];
-  const bossKinds = ['slime', 'sentinel', 'hunter', 'conjurer', 'warden'];
+  // Boss is picked by the run (random per tier) and passed in. Fall back to a
+  // sensible default if buildFloor was called without an override.
+  const bossKind = bossKindOverride
+    || (typeof pickBossForFloor === 'function' ? pickBossForFloor(floorIdx) : 'slime');
 
   // Helper: scatter `n` enemies in a room, away from the doors and center.
   function scatter(n) {
@@ -51,11 +55,16 @@ function buildFloor(floorIdx) {
   const rooms = [];
   let nextId = 0;
 
+  // Grid offsets per door direction — used to assign room coordinates so the
+  // minimap can lay rooms out spatially.
+  const delta = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] };
+
   // 1) Start room — random outbound direction.
   const startOutDir = pickDir([]);
   const start = new Room({ id: nextId++, kind: 'start', doors: [startOutDir], enemySpawns: [] });
   start.cleared = true;
   start.openDoors();
+  start.gridX = 0; start.gridY = 0;
   rooms.push(start);
 
   // 2) Build the enemy chain.
@@ -78,6 +87,9 @@ function buildFloor(floorIdx) {
       const poops = Math.random() < 0.6 ? 1 + Math.floor(Math.random() * 2) : 0; // 0..2
       scatterObstaclesInto(e, rocks, poops);
     }
+    const [dxg, dyg] = delta[prevOutDir];
+    e.gridX = prevRoom.gridX + dxg;
+    e.gridY = prevRoom.gridY + dyg;
     rooms.push(e);
     prevRoom.doors[prevOutDir].target = e.id;
     e.doors[inDir].target = prevRoom.id;
@@ -88,79 +100,97 @@ function buildFloor(floorIdx) {
   // 3) Boss room.
   const bossInDir = opp[prevOutDir];
   const boss = new Room({
-    id: nextId++, kind: 'boss', doors: [bossInDir], bossKind: bossKinds[floorIdx],
+    id: nextId++, kind: 'boss', doors: [bossInDir], bossKind,
   });
+  const [bdx, bdy] = delta[prevOutDir];
+  boss.gridX = prevRoom.gridX + bdx;
+  boss.gridY = prevRoom.gridY + bdy;
   rooms.push(boss);
   prevRoom.doors[prevOutDir].target = boss.id;
   boss.doors[bossInDir].target = prevRoom.id;
 
-  // 4) Treasure branch off a random enemy room with a free direction.
-  const enemyRooms = rooms.filter(r => r.kind === 'enemy');
-  // Try each enemy room in random order until we find one with a free side.
-  const order = enemyRooms.slice().sort(() => Math.random() - 0.5);
-  let treasureRoom = null;
-  for (const candidate of order) {
-    const used = Object.keys(candidate.doors);
-    const free = dirs.filter(d => !used.includes(d));
-    if (free.length === 0) continue;
-    const branchDir = free[Math.floor(Math.random() * free.length)];
-    candidate.doors[branchDir] = { target: null, opened: false };
-
-    const treasInDir = opp[branchDir];
-    const treas = new Room({
-      id: nextId++, kind: 'treasure', doors: [treasInDir], enemySpawns: [],
-    });
-    treas.cleared = true;
-    treas.openDoors();
-    rooms.push(treas);
-    candidate.doors[branchDir].target = treas.id;
-    treas.doors[treasInDir].target = candidate.id;
-    treasureRoom = treas;
-    break;
-  }
-
-  // 5) Shop branch — similar to treasure, but with a paid pedestal trio.
-  //    Skip floor 1 to give the player a chance to gather coins first.
-  if (floorIdx >= 1) {
-    const order2 = enemyRooms.slice().sort(() => Math.random() - 0.5);
-    for (const candidate of order2) {
+  // 4 & 5) Treasure + shop branches.
+  // Guaranteed to spawn on every floor: try enemy rooms first (BoI-style),
+  // then fall back to the start room, then the boss room if needed. With our
+  // tiny chains, the worst case still has at least one free side somewhere.
+  function branchSpecialRoom(kindStr) {
+    const enemyRooms = rooms.filter(r => r.kind === 'enemy');
+    const fallback = [start];                  // start almost always has 3 free dirs
+    const candidates = enemyRooms
+      .slice()
+      .sort(() => Math.random() - 0.5)
+      .concat(fallback);
+    for (const candidate of candidates) {
       const used = Object.keys(candidate.doors);
       const free = dirs.filter(d => !used.includes(d));
       if (free.length === 0) continue;
       const branchDir = free[Math.floor(Math.random() * free.length)];
       candidate.doors[branchDir] = { target: null, opened: false };
 
-      const shopInDir = opp[branchDir];
-      const shop = new Room({
-        id: nextId++, kind: 'shop', doors: [shopInDir], enemySpawns: [],
+      const inDirNew = opp[branchDir];
+      const room = new Room({
+        id: nextId++, kind: kindStr, doors: [inDirNew], enemySpawns: [],
       });
-      shop.cleared = true;
-      shop.openDoors();
+      room.cleared = true;
+      room.openDoors();
+      const [dxg, dyg] = delta[branchDir];
+      room.gridX = candidate.gridX + dxg;
+      room.gridY = candidate.gridY + dyg;
+      rooms.push(room);
+      candidate.doors[branchDir].target = room.id;
+      room.doors[inDirNew].target = candidate.id;
+      return room;
+    }
+    return null; // exhaustively impossible with current chain sizes
+  }
 
-      // Three slots laid out horizontally in the middle of the room.
-      const cy = (shop.top + shop.bottom) / 2;
-      const cx = (shop.left + shop.right) / 2;
-      const gap = 110;
-      // Item slot uses a fresh random item.
-      const pickedSoFar = treasureRoom ? [] : []; // best-effort; runtime fills items list
-      const itemDef = pickRandomItem([]);
-      shop.shopSlots = [
-        { x: cx - gap, y: cy, kind: 'heart', cost: 3,  taken: false },
-        { x: cx,       y: cy, kind: 'bomb',  cost: 5,  taken: false },
-        { x: cx + gap, y: cy, kind: 'item',  cost: 15, taken: false, itemId: itemDef.id },
-      ];
+  // Treasure first (so it gets the prime branch), then shop.
+  const treasureRoom = branchSpecialRoom('treasure');
+  // Lock the inbound door from the parent room into the treasure room.
+  // The treasure-side door (return path) stays unlocked so the player can
+  // always leave after grabbing the loot.
+  if (treasureRoom) {
+    for (const r of rooms) {
+      for (const dir in r.doors) {
+        const door = r.doors[dir];
+        if (door.target === treasureRoom.id && r.kind !== 'treasure') {
+          door.locked = true;
+        }
+      }
+    }
+  }
 
-      rooms.push(shop);
-      candidate.doors[branchDir].target = shop.id;
-      shop.doors[shopInDir].target = candidate.id;
-      break;
+  const shop = branchSpecialRoom('shop');
+  if (shop) {
+    // Four slots laid out horizontally — added a key slot so shops can sell
+    // the resource that gates treasure rooms.
+    const cy = (shop.top + shop.bottom) / 2;
+    const cx = (shop.left + shop.right) / 2;
+    const gap = 90;
+    const itemDef = pickRandomItem([]);
+    shop.shopSlots = [
+      { x: cx - gap * 1.5, y: cy, kind: 'heart', cost: 3,  taken: false },
+      { x: cx - gap * 0.5, y: cy, kind: 'bomb',  cost: 5,  taken: false },
+      { x: cx + gap * 0.5, y: cy, kind: 'key',   cost: 4,  taken: false },
+      { x: cx + gap * 1.5, y: cy, kind: 'item',  cost: 15, taken: false, itemId: itemDef.id },
+    ];
+  }
+
+  // Stamp each door with the kind of its target room so room.draw() can pick
+  // door visuals — boss doors look bloody, treasure doors look gilded, etc.
+  for (const r of rooms) {
+    for (const dir in r.doors) {
+      const targetId = r.doors[dir].target;
+      if (targetId == null) continue;
+      const target = rooms.find(x => x.id === targetId);
+      if (target) r.doors[dir].targetKind = target.kind;
     }
   }
 
   return {
     rooms,
     startId: 0,
-    bossKind: bossKinds[floorIdx],
+    bossKind,
     floorIdx,
   };
 }

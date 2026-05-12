@@ -1,5 +1,6 @@
 /* Crypt Crawler — page styling.
-   The game itself draws into the canvas; CSS only handles framing and scaling. */
+   The game itself draws into the canvas; CSS handles the framing, CRT scanlines,
+   vignette and bezel that turn the browser window into a basement TV. */
 
 html, body {
   margin: 0;
@@ -10,9 +11,12 @@ html, body {
   color: #c8b890;
   font-family: 'Courier New', monospace;
   overflow: hidden;
+  /* Disable text selection of UI elements that aren't meant to be selectable. */
+  user-select: none;
 }
 
-/* Grungy backdrop — dark room with dirt smears and an inner spotlight. */
+/* Room backdrop — heavy grunge, off-color smears, pooled spotlight in the
+   center. Pretends we're peering at the TV from across a dim basement. */
 body::before {
   content: '';
   position: fixed; inset: 0;
@@ -26,7 +30,7 @@ body::before {
   pointer-events: none;
   z-index: 0;
 }
-/* SVG noise grunge layered on top — gives a watercolor-dirt feel. */
+/* SVG noise grunge layered on top — watercolor-dirt feel. */
 body::after {
   content: '';
   position: fixed; inset: 0;
@@ -51,24 +55,116 @@ body::after {
   box-sizing: border-box;
 }
 
-/* Canvas fills the screen as big as the 4:3 aspect ratio allows. */
-#game {
+/* The TV screen — wraps the canvas so we can stack scanlines/vignette/glare
+   overlays on top while keeping the same 4:3 aspect ratio. */
+#screen {
+  position: relative;
   width: min(98vw, calc(94vh * 4 / 3));
   height: min(94vh, calc(98vw * 3 / 4));
   max-width: 100%;
-  border: 6px solid #1a0c0c;
+  /* Chunky beige plastic bezel. Layered borders + shadows mimic a CRT case. */
+  border: 10px solid #1a0c0c;
+  border-radius: 6px;
   background: #0e0c14;
   box-shadow:
+    /* inner phosphor glow */
     inset 0 0 0 2px #2a1a1a,
+    inset 0 0 24px rgba(220, 60, 60, 0.18),
+    inset 0 0 80px rgba(0, 0, 0, 0.65),
+    /* outer plastic bezel highlights */
     0 0 0 2px #000,
-    0 0 60px rgba(80, 20, 20, 0.45),
-    0 12px 0 #000,
-    0 14px 30px rgba(0,0,0,0.85);
+    0 0 0 6px #2a1816,
+    0 0 0 8px #0a0508,
+    /* table shadow */
+    0 0 80px rgba(80, 20, 20, 0.55),
+    0 14px 0 #000,
+    0 18px 50px rgba(0,0,0,0.9);
+  overflow: hidden;
+  /* Slight perspective curve so the screen feels rounded — keeps the BoI
+     "playing on an old CRT" feel without distorting the gameplay. */
+  transform: perspective(900px) rotateX(0.6deg);
+}
+
+/* Game canvas — fills the screen. The internal 800x600 buffer is nearest-
+   neighbor scaled to the screen size for chunky pixels. */
+#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #0e0c14;
   /* Chunky pixel scaling — BoI-style low-res blowup. */
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  /* Warm color grade — bright enough to read clearly, still feels torchlit. */
+  filter: contrast(1.05) saturate(1.00) brightness(1.15)
+          drop-shadow(0 0 0 transparent);
   outline: none;
-  filter: contrast(1.05) saturate(0.95);
+}
+
+/* CRT scanlines — fixed horizontal stripes painted across the screen.
+   Subtle so they texture the image without obscuring readability. */
+#screen .scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.12) 0px,
+      rgba(0, 0, 0, 0.12) 2px,
+      transparent 2px,
+      transparent 4px
+    ),
+    /* Phosphor RGB stripes (very subtle). */
+    repeating-linear-gradient(
+      to right,
+      rgba(255, 0, 0, 0.025) 0px,
+      rgba(0, 255, 0, 0.025) 1px,
+      rgba(0, 0, 255, 0.025) 2px,
+      transparent 3px
+    );
+  mix-blend-mode: multiply;
+  z-index: 2;
+  /* Slow drift gives the scanlines a hint of life like a misaligned vsync. */
+  animation: scan-drift 4.5s linear infinite;
+}
+@keyframes scan-drift {
+  0%   { background-position: 0 0,    0 0; }
+  100% { background-position: 0 4px,  0 0; }
+}
+
+/* CRT corner vignette — darkens the corners of the tube so the image feels
+   spotlit at center, the way an old TV always did. */
+#screen .crt-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 60px rgba(0, 0, 0, 0.45),
+    inset 0 0 160px rgba(20, 0, 0, 0.25);
+  /* Subtle barrel curvature illusion via a radial darken pass. */
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgba(0, 0, 0, 0.15) 92%,
+    rgba(0, 0, 0, 0.35) 100%
+  );
+  z-index: 3;
+}
+
+/* CRT glare — a soft white highlight sweep on the upper-left, like reflected
+   room light bouncing off the curved glass. */
+#screen .crt-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 60% 38% at 22% 14%,
+    rgba(255, 245, 220, 0.10),
+    transparent 60%
+  );
+  mix-blend-mode: screen;
+  z-index: 4;
 }
 
 #hint {

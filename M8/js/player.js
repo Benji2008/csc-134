@@ -29,6 +29,8 @@ class Player {
     this.coins = 0;
     this.bombs = 1;
     this.maxBombs = 9;
+    this.keys = 1;       // start with one so floor 1 isn't a dead-end if no keys drop
+    this.maxKeys = 99;
     // Item-effect flags.
     this.luckBoost = 1.0;            // multiplies enemy drop chance
     this.pickupMagnet = false;       // pickups within range fly toward player
@@ -39,6 +41,8 @@ class Player {
     this.fireCooldown = 0;
     this.lookX = 0; this.lookY = 1;
     this.muzzleFlash = 0;
+    // Velocity for smooth accel/decel — gives weight without feeling drifty.
+    this.vx = 0; this.vy = 0;
     // Items collected during this run (array of item ids), shown in HUD.
     this.items = [];
 
@@ -71,18 +75,37 @@ class Player {
       dx *= inv; dy *= inv;
     }
 
-    this.x += dx * this.speed * dt;
-    this.y += dy * this.speed * dt;
+    // Velocity-based movement. Accel ramps in fast (~0.08s to top speed) and
+    // decel is slightly snappier (~0.06s to stop) so the player feels weighty
+    // but never sluggish — Isaac-style tight control with a hint of skid.
+    const targetVx = dx * this.speed;
+    const targetVy = dy * this.speed;
+    // Exponential approach: rate is "per second"; convert with 1 - exp(-k*dt).
+    const accelK = 18;   // higher = snappier acceleration
+    const decelK = 22;   // higher = snappier stop
+    const kx = (dx !== 0) ? accelK : decelK;
+    const ky = (dy !== 0) ? accelK : decelK;
+    this.vx += (targetVx - this.vx) * (1 - Math.exp(-kx * dt));
+    this.vy += (targetVy - this.vy) * (1 - Math.exp(-ky * dt));
+    // Dead zone so we don't creep at sub-pixel speeds when standing still.
+    if (dx === 0 && Math.abs(this.vx) < 4) this.vx = 0;
+    if (dy === 0 && Math.abs(this.vy) < 4) this.vy = 0;
 
-    // Walk bob — phase advances while moving, freezes when idle.
-    this.moving = (dx !== 0 || dy !== 0);
-    if (this.moving) this.walkT += dt * 11;
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
 
-    // Clamp to room bounds.
-    if (this.x < room.left + this.r)   this.x = room.left + this.r;
-    if (this.x > room.right - this.r)  this.x = room.right - this.r;
-    if (this.y < room.top + this.r)    this.y = room.top + this.r;
-    if (this.y > room.bottom - this.r) this.y = room.bottom - this.r;
+    // Walk bob — phase tracks actual speed, not raw input, so the bob ramps
+    // in/out with the accel curve instead of snapping on/off.
+    const speedNow = Math.hypot(this.vx, this.vy);
+    this.moving = speedNow > 8;
+    if (this.moving) this.walkT += dt * 11 * (speedNow / this.speed);
+
+    // Clamp to room bounds. Zero the velocity on the clamped axis so you don't
+    // build up phantom momentum while held against a wall.
+    if (this.x < room.left + this.r)   { this.x = room.left + this.r;   if (this.vx < 0) this.vx = 0; }
+    if (this.x > room.right - this.r)  { this.x = room.right - this.r;  if (this.vx > 0) this.vx = 0; }
+    if (this.y < room.top + this.r)    { this.y = room.top + this.r;    if (this.vy < 0) this.vy = 0; }
+    if (this.y > room.bottom - this.r) { this.y = room.bottom - this.r; if (this.vy > 0) this.vy = 0; }
 
     // --- shooting ---
     // Movement uses WASD, shooting uses arrows — classic twin-stick on a keyboard.
@@ -110,13 +133,12 @@ class Player {
     // --- tears: spawn + advance ---
     this.tearSpawnT -= dt;
     if (this.tearSpawnT <= 0) {
-      // Drop from one of the two eyes (alternates).
-      const ex = this.lookX, ey = this.lookY;
-      const off = this.r * 0.4;
-      const perpX = -ey, perpY = ex;
+      // Drop from one of the two eyes (alternates). Eyes are at a fixed
+      // horizontal layout on the face so tears fall straight down from each.
+      const off = this.r * 0.42;
       const sign = this.tearSide;
-      const tx = this.x + ex * off * 0.55 + perpX * sign * off * 0.6;
-      const ty = this.y + ey * off * 0.55 + perpY * sign * off * 0.6 + 2;
+      const tx = this.x + sign * off * 0.7;
+      const ty = this.y - off * 0.15 + 2;
       this.tears.push({
         x: tx, y: ty,
         vx: (Math.random() - 0.5) * 24,
@@ -223,23 +245,32 @@ class Player {
     const flickerOff = this.iframes > 0 && Math.floor(this.iframes / 80) % 2 === 0;
     if (flickerOff) return;
 
-    // Walk bob — vertical bounce while moving. Stays anchored to ground (shadow).
-    const bobY = this.moving ? Math.sin(this.walkT) * 1.8 : 0;
+    // Walk bob — vertical bounce while moving. Head bobs harder than the
+    // body so the silhouette reads as a kid bouncing on his feet.
+    const bobY = this.moving ? Math.sin(this.walkT) * 2.0 : 0;
     const py = this.y + bobY;
 
-    // Soft drop shadow — stays on the ground regardless of bob.
+    // Soft drop shadow — stays on the ground regardless of bob, anchored to
+    // where the feet land.
     ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.beginPath();
-    ctx.ellipse(this.x, this.y + this.r * 0.95, this.r * 0.95, this.r * 0.32, 0, 0, Math.PI * 2);
+    ctx.ellipse(this.x, this.y + this.r * 1.65, this.r * 1.00, this.r * 0.28, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Body — wobbly pale-flesh circle with thick dark outline.
+    // Body lump + feet beneath the head — BoI-style silhouette.
+    const bodyColor = this.iframes > 0 ? '#fff4d4' : '#f0d8b0';
+    drawCreatureBody(ctx, this.x, this.y, this.r, {
+      bodyColor, outline: '#1a0d10', footColor: '#2a1818',
+      moving: this.moving, phase: this.walkT, seed: this.seed,
+    });
+
+    // Head — wobbly pale-flesh circle with thick dark outline.
     // Color shifts slightly during iframes so hits read clearly.
-    const body = this.iframes > 0 ? '#fff4d4' : '#f0d8b0';
-    ctx.fillStyle = body;
+    const headColor = this.iframes > 0 ? '#fff4d4' : '#f0d8b0';
+    ctx.fillStyle = headColor;
     pathWobblyCircle(ctx, this.x, py, this.r, this.seed);
     ctx.fill();
-    // Soft underbelly shadow — 2-tone shading per BoI guide.
+    // Soft underbelly shadow on the head — 2-tone shading per BoI guide.
     ctx.save();
     ctx.clip();
     ctx.fillStyle = 'rgba(120, 70, 60, 0.32)';
@@ -251,16 +282,17 @@ class Player {
     pathWobblyCircle(ctx, this.x, py, this.r, this.seed);
     ctx.stroke();
 
-    // Big asymmetric Isaac eyes — huge, slightly different sizes per side.
-    const ex = this.lookX, ey = this.lookY;
+    // Big asymmetric Isaac eyes. Eye SOCKETS are locked to a fixed horizontal
+    // layout (the head always faces the camera) and only the pupils shift to
+    // track the look direction — that's what sells the BoI 3/4-view feel
+    // instead of pure top-down.
     const off = this.r * 0.42;
-    const perpX = -ey, perpY = ex;
-    const eyeR = [this.r * 0.34, this.r * 0.30]; // asymmetric
+    const eyeR  = [this.r * 0.34, this.r * 0.30];
     const pupilR = [this.r * 0.16, this.r * 0.14];
     let i = 0;
     for (const sign of [-1, 1]) {
-      const cxE = this.x + ex * off * 0.25 + perpX * sign * off * 0.7;
-      const cyE = py + ey * off * 0.25 + perpY * sign * off * 0.7;
+      const cxE = this.x + sign * off * 0.7;
+      const cyE = py - off * 0.15;
       // white of the eye
       ctx.fillStyle = '#f8eed8';
       ctx.beginPath();
@@ -270,10 +302,12 @@ class Player {
       ctx.strokeStyle = '#1a0d10';
       ctx.lineWidth = 1.6;
       ctx.stroke();
-      // huge pupil shifted toward look direction
+      // pupil tracks the look direction within the socket.
       ctx.fillStyle = '#0a0508';
       ctx.beginPath();
-      ctx.arc(cxE + ex * eyeR[i] * 0.35, cyE + ey * eyeR[i] * 0.35, pupilR[i], 0, Math.PI * 2);
+      ctx.arc(cxE + this.lookX * eyeR[i] * 0.40,
+              cyE + this.lookY * eyeR[i] * 0.40,
+              pupilR[i], 0, Math.PI * 2);
       ctx.fill();
       i++;
     }

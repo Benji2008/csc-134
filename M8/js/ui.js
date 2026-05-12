@@ -116,6 +116,28 @@ const UI = {
     ctx.fillStyle = '#d8d0c0';
     ctx.fillText(String(player.bombs | 0), pillX + 15, cy);
 
+    // Key glyph — brass key shape next to bomb counter.
+    pillX = pillX + 16 + Math.max(20, ctx.measureText(String(player.bombs | 0)).width + 4);
+    ctx.fillStyle = '#e0b840';
+    ctx.beginPath();
+    ctx.arc(pillX + 4, cy, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#0a0508';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    ctx.fillStyle = '#1a1018';
+    ctx.beginPath();
+    ctx.arc(pillX + 4, cy, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#e0b840';
+    ctx.fillRect(pillX + 8, cy - 1.5, 8, 3);
+    ctx.fillRect(pillX + 14, cy + 1.5, 2, 2.5);
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 16px Courier New';
+    ctx.fillText(String(player.keys | 0), pillX + 22, cy + 1);
+    ctx.fillStyle = '#f0d058';
+    ctx.fillText(String(player.keys | 0), pillX + 21, cy);
+
     // Floor label, centered. Includes themed name. Shadowed for grit.
     const themeName = (typeof getTheme === 'function') ? getTheme(floorIdx).name : '';
     const label = `FLOOR ${floorIdx + 1} / ${C.TOTAL_FLOORS}  ·  ${themeName.toUpperCase()}`;
@@ -379,6 +401,101 @@ const UI = {
       ctx.strokeStyle = '#1a1620';
       ctx.lineWidth = 1;
       ctx.stroke();
+    }
+  },
+
+  // BoI-style minimap, top-right under the HUD. Shows visited rooms in full,
+  // adjacent unvisited rooms as dim silhouettes, and highlights the current room.
+  drawMinimap(ctx, floor, currentRoom) {
+    if (!floor || !floor.rooms) return;
+    const cell = 16, gap = 2;
+
+    // Bounds of the room grid so we can size the panel.
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const r of floor.rooms) {
+      if (r.gridX < minX) minX = r.gridX;
+      if (r.gridX > maxX) maxX = r.gridX;
+      if (r.gridY < minY) minY = r.gridY;
+      if (r.gridY > maxY) maxY = r.gridY;
+    }
+    const cols = (maxX - minX + 1);
+    const rows = (maxY - minY + 1);
+    const gridW = cols * cell + (cols - 1) * gap;
+    const gridH = rows * cell + (rows - 1) * gap;
+    const padX = 6, padY = 6;
+    const panelX = C.CANVAS_W - 14 - gridW - padX * 2;
+    const panelY = C.HUD_H + 8;
+    const panelW = gridW + padX * 2;
+    const panelH = gridH + padY * 2;
+
+    // Panel background — same dark/inked look as other UI.
+    ctx.fillStyle = 'rgba(10, 6, 10, 0.78)';
+    ctx.fillRect(panelX, panelY, panelW, panelH);
+    ctx.strokeStyle = '#0a0306';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(panelX, panelY, panelW, panelH);
+    ctx.strokeStyle = '#3a1a1a';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(panelX + 2, panelY + 2, panelW - 4, panelH - 4);
+
+    // Which rooms should be visible? Visited rooms + their direct neighbors.
+    const visible = new Set();
+    for (const r of floor.rooms) {
+      if (!r.visited) continue;
+      visible.add(r.id);
+      for (const dir in r.doors) {
+        const t = r.doors[dir].target;
+        if (t != null) visible.add(t);
+      }
+    }
+
+    const ox = panelX + padX;
+    const oy = panelY + padY;
+    for (const r of floor.rooms) {
+      if (!visible.has(r.id)) continue;
+      const cx = ox + (r.gridX - minX) * (cell + gap);
+      const cy = oy + (r.gridY - minY) * (cell + gap);
+
+      // Pick fill color. Unvisited (just glimpsed) rooms are dim and uncolored.
+      let fill = '#2a1f2a';
+      let glyph = '';
+      let glyphColor = '#f0e0c0';
+      if (r.visited) {
+        if (r.kind === 'boss')     { fill = '#7a1a28'; glyph = '!'; }
+        else if (r.kind === 'treasure') { fill = '#8a6a20'; glyph = '★'; glyphColor = '#ffe890'; }
+        else if (r.kind === 'shop')     { fill = '#2a6a60'; glyph = '$'; glyphColor = '#ffe890'; }
+        else if (r.kind === 'start')    { fill = '#5a5a6a'; }
+        else                            { fill = '#3a2a3a'; }
+        // Cleared enemy rooms get a slightly lighter tint so it's easy to see
+        // what's still threatening at a glance.
+        if (r.kind === 'enemy' && r.cleared) fill = '#4a3a4a';
+      } else {
+        // Adjacent but unvisited — still hint at boss / treasure / shop.
+        if (r.kind === 'boss') fill = '#3a1018';
+      }
+
+      ctx.fillStyle = fill;
+      ctx.fillRect(cx, cy, cell, cell);
+
+      if (glyph) {
+        ctx.fillStyle = glyphColor;
+        ctx.font = 'bold 11px Courier New';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(glyph, cx + cell / 2, cy + cell / 2 + 1);
+      }
+
+      // Current room — bright pulsing outline.
+      if (r === currentRoom) {
+        const pulse = 0.6 + 0.4 * Math.abs(Math.sin(performance.now() / 280));
+        ctx.strokeStyle = `rgba(240, 220, 140, ${pulse})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cx - 0.5, cy - 0.5, cell + 1, cell + 1);
+      } else {
+        ctx.strokeStyle = '#0a0508';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cx + 0.5, cy + 0.5, cell - 1, cell - 1);
+      }
     }
   },
 

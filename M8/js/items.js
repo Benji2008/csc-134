@@ -241,6 +241,69 @@ const ITEMS = [
     color: '#7a4a2a',
     apply(p) { p.maxBombs = 18; },
   },
+
+  // --- Bonus items (round 2) ------------------------------------------
+  {
+    id: 'polyphemus',
+    name: 'Polyphemus',
+    desc: 'Huge slow bullets, big damage',
+    color: '#fff0c8',
+    apply(p) {
+      p.bulletRadius += 6;
+      p.bulletDamage += 2;
+      p.fireCooldownMs *= 1.35;
+      p.bulletSpeed *= 0.85;
+    },
+  },
+  {
+    id: 'glass_cannon',
+    name: 'Glass Cannon',
+    desc: '+2 damage, but max HP drops to 2 hearts',
+    color: '#c0e8ff',
+    apply(p) {
+      p.bulletDamage += 2;
+      p.maxHp = 4; // 2 full hearts
+      if (p.hp > p.maxHp) p.hp = p.maxHp;
+    },
+  },
+  {
+    id: 'caffeine_rush',
+    name: 'Caffeine Rush',
+    desc: '+20% speed and +20% fire rate',
+    color: '#c89060',
+    apply(p) {
+      p.speed *= 1.20;
+      p.fireCooldownMs *= 0.80;
+    },
+  },
+  {
+    id: 'wrath_of_the_lamb',
+    name: 'Wrath of the Lamb',
+    desc: 'Homing bullets and +1 damage',
+    color: '#ffb0c0',
+    apply(p) { p.bulletHoming = true; p.bulletDamage += 1; },
+  },
+  {
+    id: 'lucky_penny',
+    name: 'Lucky Penny',
+    desc: 'Instant +8 coins and a small luck boost',
+    color: '#f0c038',
+    apply(p) {
+      p.coins = (p.coins | 0) + 8;
+      p.luckBoost = (p.luckBoost || 1.0) * 1.2;
+    },
+  },
+  {
+    id: 'fly_swatter',
+    name: 'Fly Swatter',
+    desc: '+50% damage vs small foes (and flies hate you less)',
+    color: '#90d090',
+    apply(p) {
+      // Bullets gain a small damage bump and a touch of bouncing for crowd control.
+      p.bulletDamage += 1;
+      p.bulletBouncing = true;
+    },
+  },
 ];
 
 // Pick a random item the player hasn't picked up yet this run. If they've

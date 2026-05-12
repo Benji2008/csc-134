@@ -22,6 +22,8 @@ const Game = (function () {
   let bombs = [];            // active placed bombs; reset per room
   let runTimeMs = 0;         // accumulated playing time; freezes during pause
   let lastVictoryWasBest = false;
+  // Track bosses already used this run so pickBossForFloor can avoid repeats.
+  let usedBosses = [];
   // Pickup toast — shown briefly when the player grabs an item.
   let pickupToast = { text: '', ttl: 0 };
   function showPickupToast(text) { pickupToast.text = text; pickupToast.ttl = 2800; }
@@ -30,6 +32,7 @@ const Game = (function () {
   function startRun() {
     player = new Player(C.CANVAS_W / 2, C.CANVAS_H / 2);
     floorIdx = 0;
+    usedBosses = [];
     enterFloor(0);
     runTimeMs = 0;
     state = STATE.PLAYING;
@@ -37,7 +40,9 @@ const Game = (function () {
 
   function enterFloor(idx) {
     floorIdx = idx;
-    floor = buildFloor(idx);
+    const bossKind = pickBossForFloor(idx, usedBosses);
+    usedBosses.push(bossKind);
+    floor = buildFloor(idx, bossKind);
     bossDefeated = false;
     // Stock the treasure room with a random unseen item.
     const treas = floor.rooms.find(r => r.kind === 'treasure');
@@ -53,6 +58,7 @@ const Game = (function () {
   // (so we can place the player just inside that door).
   function enterRoom(roomId, fromDir) {
     currentRoom = floor.rooms[roomId];
+    currentRoom.visited = true;
     projectiles = [];
     particles = [];
     enemies = [];
@@ -106,8 +112,9 @@ const Game = (function () {
     }
 
     // 2. Update enemies / boss. They may push new projectiles.
+    // Skip dead bosses so their attack patterns don't keep firing post-death.
     for (const e of enemies) e.update(dt, currentRoom, player, projectiles, spawnEnemy);
-    if (boss) boss.update(dt, currentRoom, player, projectiles, spawnEnemy);
+    if (boss && !boss.dead) boss.update(dt, currentRoom, player, projectiles, spawnEnemy);
 
     // 2b. Update bombs — fuse, explosion, blast resolution.
     for (const b of bombs) {
@@ -222,11 +229,17 @@ const Game = (function () {
         // Leave a persistent splat + a chunky gore burst at the death spot.
         currentRoom.addBloodSplat(e.x, e.y);
         spawnGoreBurst(particles, e.x, e.y);
-        // Roll a pickup drop (coin / heart / bomb).
+        // Roll a pickup drop (coin / heart / bomb / pill / etc.).
         const drop = rollEnemyDrop(e.x, e.y, player.luckBoost || 1.0);
         if (drop) {
           if (!currentRoom.pickups) currentRoom.pickups = [];
           currentRoom.pickups.push(drop);
+        }
+        // Champion enemies always drop their signature pickup on top of the roll.
+        if (e.champion) {
+          if (!currentRoom.pickups) currentRoom.pickups = [];
+          // Slight offset so the guaranteed drop doesn't sit exactly under the roll.
+          currentRoom.pickups.push(championDrop(e.champion, e.x + 12, e.y + 6));
         }
         player.onEnemyKilled();
         for (const newE of e.onDeath()) survivors.push(newE);
@@ -262,7 +275,11 @@ const Game = (function () {
       const pkSurv = [];
       for (const pk of currentRoom.pickups) {
         if (circlesHit(pk, player)) {
-          if (pk.applyTo(player)) continue; // consumed
+          if (pk.applyTo(player)) {
+            // Surface the pill result so the player knows what they got.
+            if (pk.kind === 'pill' && pk.pillMessage) showPickupToast('Pill: ' + pk.pillMessage);
+            continue;
+          }
         }
         pkSurv.push(pk);
       }
@@ -327,6 +344,9 @@ const Game = (function () {
         } else if (slot.kind === 'bomb') {
           player.bombs = Math.min(player.maxBombs, player.bombs + 1);
           showPickupToast('Bought: +1 bomb');
+        } else if (slot.kind === 'key') {
+          player.keys = Math.min(player.maxKeys, player.keys + 1);
+          showPickupToast('Bought: +1 key');
         } else if (slot.kind === 'item') {
           const item = findItemById(slot.itemId);
           if (item) {
@@ -366,10 +386,29 @@ const Game = (function () {
       if (!door.opened) continue;
       // Use the trigger rect (inside the room), not the visual rect (on the wall).
       const r = currentRoom.doorTriggerRect(dir);
-      if (rectContains(r, player.x, player.y)) {
-        enterRoom(door.target, oppositeDir(dir));
-        return;
+      if (!rectContains(r, player.x, player.y)) continue;
+      // Locked? Consume a key to unlock, then walk through immediately.
+      // If no key, just toast and block this frame.
+      if (door.locked) {
+        if (player.keys <= 0) {
+          showPickupToast('Locked — find a key');
+          return;
+        }
+        player.keys -= 1;
+        door.locked = false;
+        // Mirror the unlock on the matching door in the target room so the
+        // return trip is also free.
+        const target = floor.rooms[door.target];
+        if (target) {
+          for (const d2 in target.doors) {
+            if (target.doors[d2].target === currentRoom.id) {
+              target.doors[d2].locked = false;
+            }
+          }
+        }
       }
+      enterRoom(door.target, oppositeDir(dir));
+      return;
     }
   }
 
@@ -405,6 +444,7 @@ const Game = (function () {
       for (const p of projectiles) p.draw(ctx);
       for (const pa of particles) pa.draw(ctx);
       UI.drawHUD(ctx, player, floorIdx, runTimeMs);
+      UI.drawMinimap(ctx, floor, currentRoom);
       if (boss && !boss.dead) UI.drawBossBar(ctx, boss);
       if (pickupToast.ttl > 0) {
         UI.drawPickupToast(ctx, pickupToast.text, pickupToast.ttl);
