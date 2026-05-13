@@ -32,6 +32,9 @@ class Enemy {
     this.faceY = 1;
     // Per-instance wobble seed — combined with time for low-fps twitch animation.
     this.seed = Math.random() * 9999;
+    // Knockback velocity, decays each frame. Applied by bullets / blasts.
+    this.knockVx = 0;
+    this.knockVy = 0;
   }
 
   update(dt, room, player, projectiles, spawnQueue) {
@@ -42,6 +45,17 @@ class Enemy {
     const d = Math.hypot(dx, dy) || 1;
     this.faceX = dx / d; this.faceY = dy / d;
     Enemy.behaviors[this.kind](this, dt, room, player, projectiles);
+    // Apply knockback after behavior so bullets visibly shove enemies even if
+    // their behavior pins them to a path. Decays exponentially.
+    if (this.knockVx !== 0 || this.knockVy !== 0) {
+      this.x += this.knockVx * dt;
+      this.y += this.knockVy * dt;
+      const decay = Math.exp(-9 * dt);
+      this.knockVx *= decay;
+      this.knockVy *= decay;
+      if (Math.abs(this.knockVx) < 6) this.knockVx = 0;
+      if (Math.abs(this.knockVy) < 6) this.knockVy = 0;
+    }
     // Keep enemies inside the room.
     if (this.x < room.left + this.r)   this.x = room.left + this.r;
     if (this.x > room.right - this.r)  this.x = room.right - this.r;
@@ -49,9 +63,13 @@ class Enemy {
     if (this.y > room.bottom - this.r) this.y = room.bottom - this.r;
   }
 
-  takeDamage(amount) {
+  takeDamage(amount, knock) {
     this.hp -= amount;
     this.hitFlash = C.HIT_FLASH_MS;
+    if (knock) {
+      this.knockVx += knock.x;
+      this.knockVy += knock.y;
+    }
     if (this.hp <= 0) this.dead = true;
   }
 

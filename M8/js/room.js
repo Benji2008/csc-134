@@ -486,10 +486,10 @@ class Room {
       }
     }
 
-    // --- Treasure pedestal ---
-    if (this.kind === 'treasure' && !this.itemTaken && this.itemId) {
-      const cx = (this.left + this.right) / 2;
-      const cy = (this.top + this.bottom) / 2;
+    // --- Item pedestal (treasure rooms + post-boss rewards) ---
+    if (!this.itemTaken && this.itemId) {
+      const cx = this.itemPedestalX ?? (this.left + this.right) / 2;
+      const cy = this.itemPedestalY ?? (this.top + this.bottom) / 2;
       const item = findItemById(this.itemId);
       // Pedestal shadow.
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -510,27 +510,30 @@ class Room {
       ctx.moveTo(cx - 18, cy);
       ctx.lineTo(cx + 18, cy);
       ctx.stroke();
-      // Glow under the item.
+      // Glow under the item, gently breathing.
       const pulseT = performance.now() / 400;
       const glow = 24 + Math.sin(pulseT) * 5;
       ctx.fillStyle = hexToRgba(item.color, 0.30);
       ctx.beginPath();
       ctx.arc(cx, cy - 16, glow, 0, Math.PI * 2);
       ctx.fill();
-      // Item itself — wobbly orb in the item's color, thick outline.
-      const itemSeed = (this.id + 1) * 31;
-      ctx.fillStyle = item.color;
-      pathWobblyCircle(ctx, cx, cy - 16, 11, itemSeed);
-      ctx.fill();
-      ctx.strokeStyle = '#0a0508';
-      ctx.lineWidth = 2.4;
-      pathWobblyCircle(ctx, cx, cy - 16, 11, itemSeed);
-      ctx.stroke();
-      // Inner highlight for sparkle.
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      ctx.beginPath();
-      ctx.arc(cx - 3, cy - 19, 3, 0, Math.PI * 2);
-      ctx.fill();
+      // Tiny float bob so the sprite feels suspended over the pedestal.
+      const bob = Math.sin(pulseT * 1.4) * 1.5;
+      // Sprite — each item draws its own BoI-style silhouette via item.icon.
+      // Fallback to a wobbly colored orb for any item that hasn't been
+      // given an icon yet (none currently, but keeps the call defensive).
+      if (typeof item.icon === 'function') {
+        item.icon(ctx, cx, cy - 16 + bob);
+      } else {
+        const itemSeed = (this.id + 1) * 31;
+        ctx.fillStyle = item.color;
+        pathWobblyCircle(ctx, cx, cy - 16 + bob, 11, itemSeed);
+        ctx.fill();
+        ctx.strokeStyle = '#0a0508';
+        ctx.lineWidth = 2.4;
+        pathWobblyCircle(ctx, cx, cy - 16 + bob, 11, itemSeed);
+        ctx.stroke();
+      }
     }
 
     // --- Shop pedestals ---
@@ -619,18 +622,24 @@ class Room {
             ctx.fillRect(slot.x + 7, cyK + 2, 3, 3);
             ctx.fillRect(slot.x + 4, cyK + 2, 2, 3);
           } else {
-            // Random treasure orb.
-            ctx.fillStyle = color;
-            pathWobblyCircle(ctx, slot.x, slot.y - 14, 11, seed);
-            ctx.fill();
-            ctx.strokeStyle = '#0a0508';
-            ctx.lineWidth = 2.4;
-            pathWobblyCircle(ctx, slot.x, slot.y - 14, 11, seed);
-            ctx.stroke();
-            ctx.fillStyle = 'rgba(255,255,255,0.7)';
-            ctx.beginPath();
-            ctx.arc(slot.x - 3, slot.y - 17, 2.5, 0, Math.PI * 2);
-            ctx.fill();
+            // For-sale item — use the item's own icon if it has one,
+            // otherwise fall back to the generic colored orb.
+            const it = slot.itemId ? findItemById(slot.itemId) : null;
+            if (it && typeof it.icon === 'function') {
+              it.icon(ctx, slot.x, slot.y - 14);
+            } else {
+              ctx.fillStyle = color;
+              pathWobblyCircle(ctx, slot.x, slot.y - 14, 11, seed);
+              ctx.fill();
+              ctx.strokeStyle = '#0a0508';
+              ctx.lineWidth = 2.4;
+              pathWobblyCircle(ctx, slot.x, slot.y - 14, 11, seed);
+              ctx.stroke();
+              ctx.fillStyle = 'rgba(255,255,255,0.7)';
+              ctx.beginPath();
+              ctx.arc(slot.x - 3, slot.y - 17, 2.5, 0, Math.PI * 2);
+              ctx.fill();
+            }
           }
           // Price tag below pedestal.
           ctx.font = 'bold 14px Courier New';

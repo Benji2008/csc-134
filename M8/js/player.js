@@ -203,12 +203,14 @@ class Player {
 
   takeDamage(amount) {
     if (this.iframes > 0) return false;
-    // Soul hearts soak hits before regular HP.
-    if (this.soulHearts > 0) {
+    // Soul hearts soak hits half-heart-by-half-heart before regular HP. A
+    // 1-full-heart hit (e.g. bomb blast) chews through 2 soul half-hearts.
+    let remaining = amount;
+    while (remaining > 0 && this.soulHearts > 0) {
       this.soulHearts -= 1;
-    } else {
-      this.hp -= amount;
+      remaining -= 1;
     }
+    if (remaining > 0) this.hp -= remaining;
     this.iframes = this.iframesMax;
     return true;
   }

@@ -14,51 +14,19 @@ const UI = {
   },
 
   drawHUD(ctx, player, floorIdx, runTimeMs) {
-    // Background bar — dark with subtle gradient + grime.
-    const grad = ctx.createLinearGradient(0, 0, 0, C.HUD_H);
-    grad.addColorStop(0, '#1a0d0d');
-    grad.addColorStop(1, '#0c0608');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, C.CANVAS_W, C.HUD_H);
-    // Grime stains baked once per session.
-    if (!UI._hudGrime) {
-      UI._hudGrime = [];
-      for (let i = 0; i < 24; i++) {
-        UI._hudGrime.push({
-          x: Math.random() * C.CANVAS_W,
-          y: Math.random() * C.HUD_H,
-          r: 1 + Math.random() * 4,
-          a: 0.10 + Math.random() * 0.25,
-        });
-      }
-    }
-    for (const g of UI._hudGrime) {
-      ctx.fillStyle = `rgba(0,0,0,${g.a})`;
-      ctx.beginPath();
-      ctx.arc(g.x, g.y, g.r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // Thick ink border under the HUD.
-    ctx.strokeStyle = '#0a0306';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(0, C.HUD_H);
-    ctx.lineTo(C.CANVAS_W, C.HUD_H);
-    ctx.stroke();
-    ctx.strokeStyle = '#3a1a1a';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, C.HUD_H - 4);
-    ctx.lineTo(C.CANVAS_W, C.HUD_H - 4);
-    ctx.stroke();
+    // No background bar — BoI-style free-floating icons over the world.
+    // Each element gets a soft drop-shadow so it stays readable on bright floors.
 
-    // Hearts — half-hearts, so a heart icon = 2 hp.
-    const fullHearts = Math.floor(player.hp / 2);
-    const halfHeart  = (player.hp % 2) === 1;
+    // --- Hearts (red + soul) -----------------------------------------------
+    // Half-hearts: a heart icon = 2 hp. Soul hearts append after red ones.
+    const fullHearts  = Math.floor(player.hp / 2);
+    const halfHeart   = (player.hp % 2) === 1;
     const totalHearts = Math.ceil(player.maxHp / 2);
-    const heartSize = 24;
-    const heartGap = 5;
-    let hx = 14, hy = 8;
+    const fullSoul    = Math.floor(player.soulHearts / 2);
+    const halfSoul    = (player.soulHearts % 2) === 1;
+    const heartSize = 22;
+    const heartGap  = 3;
+    let hx = 14, hy = 10;
     for (let i = 0; i < totalHearts; i++) {
       let mode;
       if (i < fullHearts) mode = 'full';
@@ -67,97 +35,120 @@ const UI = {
       UI.drawHeart(ctx, hx, hy, heartSize, mode);
       hx += heartSize + heartGap;
     }
+    for (let i = 0; i < fullSoul; i++) {
+      UI.drawSoulHeart(ctx, hx, hy, heartSize, 'full');
+      hx += heartSize + heartGap;
+    }
+    if (halfSoul) {
+      UI.drawSoulHeart(ctx, hx, hy, heartSize, 'half');
+      hx += heartSize + heartGap;
+    }
 
-    // Coin + bomb counters tucked to the right of the hearts.
-    const cy = C.HUD_H / 2;
+    // --- Floor label, floating top-center ---------------------------------
+    const themeName = (typeof getTheme === 'function') ? getTheme(floorIdx).name : '';
+    const label = `${themeName.toUpperCase()}  ${floorIdx + 1}-${C.TOTAL_FLOORS}`;
     ctx.font = 'bold 16px Courier New';
-    ctx.textBaseline = 'middle';
-    ctx.textAlign = 'left';
-
-    // Coin glyph
-    let pillX = hx + 12;
-    ctx.fillStyle = '#c89a30';
-    ctx.beginPath();
-    ctx.arc(pillX + 6, cy, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#0a0508';
-    ctx.lineWidth = 1.6;
-    ctx.stroke();
-    ctx.fillStyle = '#0a0508';
-    ctx.font = 'bold 10px Courier New';
     ctx.textAlign = 'center';
-    ctx.fillText('¢', pillX + 6, cy + 1);
-    // count
-    ctx.font = 'bold 16px Courier New';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#000';
-    ctx.fillText(String(player.coins | 0), pillX + 16, cy + 1);
-    ctx.fillStyle = '#f0d058';
-    ctx.fillText(String(player.coins | 0), pillX + 15, cy);
+    ctx.textBaseline = 'middle';
+    UI._shadowText(ctx, label, C.CANVAS_W / 2, 18, '#d8b890');
 
-    // Bomb glyph
-    pillX = pillX + 16 + Math.max(20, ctx.measureText(String(player.coins | 0)).width + 4);
+    // --- Timer, small top-right corner ------------------------------------
+    ctx.font = '13px Courier New';
+    ctx.textAlign = 'right';
+    UI._shadowText(ctx, UI.formatTime(runTimeMs), C.CANVAS_W - 14, 14, '#9a8870');
+
+    // --- Coin / bomb / key column (under minimap, top-right) --------------
+    UI.drawPickupColumn(ctx, player);
+
+    // --- Acquired-item strip (small icons below hearts) -------------------
+    UI.drawItemStrip(ctx, player.items);
+  },
+
+  // Helper: draw text with a 1px black shadow underneath for legibility.
+  _shadowText(ctx, text, x, y, color) {
+    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+    ctx.fillText(text, x + 1, y + 1);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  },
+
+  // BoI-style vertical stack of pickup counters: bomb, coin, key.
+  // Sits in the top-right under the minimap so the hearts have all of top-left.
+  drawPickupColumn(ctx, player) {
+    // The minimap floats above us — leave enough room for a fully-explored
+    // floor before the counters start so they never collide.
+    const x = C.CANVAS_W - 64;
+    let y = 210;
+    const rowH = 22;
+    // Bomb
+    UI._drawBombIcon(ctx, x, y);
+    UI._shadowText(ctx, 'x' + (player.bombs | 0), x + 22, y + 1, '#d8d0c0');
+    y += rowH;
+    // Coin
+    UI._drawCoinIcon(ctx, x, y);
+    UI._shadowText(ctx, 'x' + (player.coins | 0), x + 22, y + 1, '#f0d058');
+    y += rowH;
+    // Key
+    UI._drawKeyIcon(ctx, x, y);
+    UI._shadowText(ctx, 'x' + (player.keys | 0), x + 22, y + 1, '#f0d058');
+  },
+
+  // Small pickup-column icons. Centered around (x, y).
+  _drawBombIcon(ctx, x, y) {
     ctx.fillStyle = '#0a0508';
     ctx.beginPath();
-    ctx.arc(pillX + 6, cy, 7, 0, Math.PI * 2);
+    ctx.arc(x, y, 7, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#1a1018';
     ctx.lineWidth = 1.6;
     ctx.stroke();
+    ctx.fillStyle = 'rgba(180,180,200,0.55)';
+    ctx.beginPath();
+    ctx.arc(x - 2, y - 2, 1.6, 0, Math.PI * 2);
+    ctx.fill();
     ctx.strokeStyle = '#8a6a40';
     ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(pillX + 6, cy - 7);
-    ctx.lineTo(pillX + 10, cy - 11);
+    ctx.moveTo(x, y - 7);
+    ctx.lineTo(x + 4, y - 11);
     ctx.stroke();
-    ctx.fillStyle = '#000';
-    ctx.font = 'bold 16px Courier New';
-    ctx.fillText(String(player.bombs | 0), pillX + 16, cy + 1);
-    ctx.fillStyle = '#d8d0c0';
-    ctx.fillText(String(player.bombs | 0), pillX + 15, cy);
-
-    // Key glyph — brass key shape next to bomb counter.
-    pillX = pillX + 16 + Math.max(20, ctx.measureText(String(player.bombs | 0)).width + 4);
+    ctx.fillStyle = '#ff8a3a';
+    ctx.beginPath();
+    ctx.arc(x + 4, y - 11, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  },
+  _drawCoinIcon(ctx, x, y) {
+    ctx.fillStyle = '#f0c038';
+    ctx.beginPath();
+    ctx.arc(x, y, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#6a4a10';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.fillStyle = '#6a4a10';
+    ctx.font = 'bold 9px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('$', x, y + 1);
+  },
+  _drawKeyIcon(ctx, x, y) {
     ctx.fillStyle = '#e0b840';
     ctx.beginPath();
-    ctx.arc(pillX + 4, cy, 5, 0, Math.PI * 2);
+    ctx.arc(x - 2, y, 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#0a0508';
     ctx.lineWidth = 1.4;
     ctx.stroke();
     ctx.fillStyle = '#1a1018';
     ctx.beginPath();
-    ctx.arc(pillX + 4, cy, 2, 0, Math.PI * 2);
+    ctx.arc(x - 2, y, 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#e0b840';
-    ctx.fillRect(pillX + 8, cy - 1.5, 8, 3);
-    ctx.fillRect(pillX + 14, cy + 1.5, 2, 2.5);
-    ctx.fillStyle = '#000';
-    ctx.font = 'bold 16px Courier New';
-    ctx.fillText(String(player.keys | 0), pillX + 22, cy + 1);
-    ctx.fillStyle = '#f0d058';
-    ctx.fillText(String(player.keys | 0), pillX + 21, cy);
-
-    // Floor label, centered. Includes themed name. Shadowed for grit.
-    const themeName = (typeof getTheme === 'function') ? getTheme(floorIdx).name : '';
-    const label = `FLOOR ${floorIdx + 1} / ${C.TOTAL_FLOORS}  ·  ${themeName.toUpperCase()}`;
-    ctx.font = 'bold 18px Courier New';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#000';
-    ctx.fillText(label, C.CANVAS_W / 2 + 1, C.HUD_H / 2 + 1);
-    ctx.fillStyle = '#d8b890';
-    ctx.fillText(label, C.CANVAS_W / 2, C.HUD_H / 2);
-
-    // Timer, right-aligned.
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#000';
-    ctx.fillText(UI.formatTime(runTimeMs), C.CANVAS_W - 11, C.HUD_H / 2 + 1);
-    ctx.fillStyle = '#9a8870';
-    ctx.fillText(UI.formatTime(runTimeMs), C.CANVAS_W - 12, C.HUD_H / 2);
-
-    // Acquired items strip below the timer.
-    UI.drawItemStrip(ctx, player.items);
+    ctx.fillRect(x + 2, y - 1.5, 7, 3);
+    ctx.fillRect(x + 7, y + 1.5, 2, 2.5);
+    ctx.strokeStyle = '#0a0508';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 2, y - 1.5, 7, 3);
   },
 
   drawHeart(ctx, x, y, size, mode) {
@@ -202,6 +193,45 @@ const UI = {
     UI.heartPath(ctx, 0, 0, w, h);
     ctx.stroke();
 
+    ctx.restore();
+  },
+
+  // Soul heart — chalky blue-white with a soft inner glow. Drawn like the red
+  // heart, no empty-container background since soul hearts only exist when
+  // they have value.
+  drawSoulHeart(ctx, x, y, size, mode) {
+    const w = size, h = size;
+    ctx.save();
+    ctx.translate(x, y);
+    if (mode === 'full') {
+      ctx.fillStyle = '#c8c8ff';
+      UI.heartPath(ctx, 0, 0, w, h);
+      ctx.fill();
+      // Inner highlight gradient feel — chalk shine top-left.
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.70)';
+      ctx.beginPath();
+      ctx.ellipse(w * 0.30, h * 0.30, w * 0.16, h * 0.12, -0.6, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (mode === 'half') {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, w / 2, h);
+      ctx.clip();
+      ctx.fillStyle = '#c8c8ff';
+      UI.heartPath(ctx, 0, 0, w, h);
+      ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.70)';
+      ctx.beginPath();
+      ctx.ellipse(w * 0.28, h * 0.30, w * 0.12, h * 0.10, -0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Outline — slightly cool-blue ink rather than pure black for the
+    // ghostly soul feel.
+    ctx.strokeStyle = '#1a1830';
+    ctx.lineWidth = 2.2;
+    UI.heartPath(ctx, 0, 0, w, h);
+    ctx.stroke();
     ctx.restore();
   },
 
@@ -365,19 +395,26 @@ const UI = {
     const h = 40;
     const x = (C.CANVAS_W - w) / 2;
     const y = C.CANVAS_H - 90;
-    // Dark base + grime
+    // Rounded base.
+    UI._roundedRect(ctx, x, y, w, h, 8);
     ctx.fillStyle = `rgba(10, 6, 10, ${0.88 * alpha})`;
-    ctx.fillRect(x, y, w, h);
-    // Inner highlight
+    ctx.fill();
+    // Inner highlight strip along the top arc.
+    ctx.save();
+    UI._roundedRect(ctx, x, y, w, h, 8);
+    ctx.clip();
     ctx.fillStyle = `rgba(60, 30, 30, ${0.45 * alpha})`;
-    ctx.fillRect(x + 2, y + 2, w - 4, 4);
-    // Thick ink border
+    ctx.fillRect(x, y, w, 5);
+    ctx.restore();
+    // Thick ink border.
     ctx.strokeStyle = `rgba(10, 4, 6, ${alpha})`;
     ctx.lineWidth = 3;
-    ctx.strokeRect(x, y, w, h);
+    UI._roundedRect(ctx, x, y, w, h, 8);
+    ctx.stroke();
     ctx.strokeStyle = `rgba(200, 160, 80, ${alpha})`;
-    ctx.lineWidth = 1.4;
-    ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
+    ctx.lineWidth = 1.2;
+    UI._roundedRect(ctx, x + 2, y + 2, w - 4, h - 4, 6);
+    ctx.stroke();
     // Text with shadow
     ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
     ctx.fillText(text, C.CANVAS_W / 2 + 1, y + h / 2 + 1);
@@ -385,22 +422,45 @@ const UI = {
     ctx.fillText(text, C.CANVAS_W / 2, y + h / 2);
   },
 
-  // Tiny strip of acquired-item dots at the top of the HUD.
+  // Acquired-item strip — small icons floating just under the hearts so the
+  // player can glance at what they're holding. BoI shows passives this way.
   drawItemStrip(ctx, items) {
     if (!items || items.length === 0) return;
-    const x0 = C.CANVAS_W - 18;
-    const y = C.HUD_H - 8;
+    const startX = 16;
+    const y = 40;          // just under the hearts row
+    const step = 18;
+    const perRow = 18;     // wrap to a second row if you stack a ton
     for (let i = 0; i < items.length; i++) {
       const def = findItemById(items[i]);
       if (!def) continue;
-      const cx = x0 - i * 14;
-      ctx.fillStyle = def.color;
+      const row = Math.floor(i / perRow);
+      const col = i % perRow;
+      const cx = startX + col * step;
+      const cy = y + row * step;
+      // Mini glow.
+      ctx.fillStyle = `${def.color}33`;
       ctx.beginPath();
-      ctx.arc(cx, y, 4, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 9, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#1a1620';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      // Use the item's own icon if present, at a scaled-down size by drawing
+      // it at the small location — most icons are sized for ~22px and read
+      // tolerably at 14-16px. If we wanted a true mini sprite we'd pass scale,
+      // but every helper already centers around (x, y) so we can rely on that.
+      if (typeof def.icon === 'function') {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(0.65, 0.65);
+        def.icon(ctx, 0, 0);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = def.color;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#1a1620';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
     }
   },
 
@@ -428,15 +488,15 @@ const UI = {
     const panelW = gridW + padX * 2;
     const panelH = gridH + padY * 2;
 
-    // Panel background — same dark/inked look as other UI.
-    ctx.fillStyle = 'rgba(10, 6, 10, 0.78)';
-    ctx.fillRect(panelX, panelY, panelW, panelH);
+    // Panel background — rounded, ink-edged, less boxy than the old hard rect.
+    const radius = 6;
+    UI._roundedRect(ctx, panelX, panelY, panelW, panelH, radius);
+    ctx.fillStyle = 'rgba(10, 6, 10, 0.72)';
+    ctx.fill();
     ctx.strokeStyle = '#0a0306';
     ctx.lineWidth = 2;
-    ctx.strokeRect(panelX, panelY, panelW, panelH);
-    ctx.strokeStyle = '#3a1a1a';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(panelX + 2, panelY + 2, panelW - 4, panelH - 4);
+    UI._roundedRect(ctx, panelX, panelY, panelW, panelH, radius);
+    ctx.stroke();
 
     // Which rooms should be visible? Visited rooms + their direct neighbors.
     const visible = new Set();
@@ -474,8 +534,9 @@ const UI = {
         if (r.kind === 'boss') fill = '#3a1018';
       }
 
+      UI._roundedRect(ctx, cx, cy, cell, cell, 3);
       ctx.fillStyle = fill;
-      ctx.fillRect(cx, cy, cell, cell);
+      ctx.fill();
 
       if (glyph) {
         ctx.fillStyle = glyphColor;
@@ -490,13 +551,27 @@ const UI = {
         const pulse = 0.6 + 0.4 * Math.abs(Math.sin(performance.now() / 280));
         ctx.strokeStyle = `rgba(240, 220, 140, ${pulse})`;
         ctx.lineWidth = 2;
-        ctx.strokeRect(cx - 0.5, cy - 0.5, cell + 1, cell + 1);
+        UI._roundedRect(ctx, cx - 0.5, cy - 0.5, cell + 1, cell + 1, 4);
+        ctx.stroke();
       } else {
         ctx.strokeStyle = '#0a0508';
         ctx.lineWidth = 1;
-        ctx.strokeRect(cx + 0.5, cy + 0.5, cell - 1, cell - 1);
+        UI._roundedRect(ctx, cx + 0.5, cy + 0.5, cell - 1, cell - 1, 3);
+        ctx.stroke();
       }
     }
+  },
+
+  // Helper: build a rounded-rect path (does not fill or stroke — caller does).
+  _roundedRect(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y,     x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x,     y + h, r);
+    ctx.arcTo(x,     y + h, x,     y,     r);
+    ctx.arcTo(x,     y,     x + w, y,     r);
+    ctx.closePath();
   },
 
   drawPause(ctx) {

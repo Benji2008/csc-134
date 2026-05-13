@@ -28,6 +28,12 @@ const Game = (function () {
   let pickupToast = { text: '', ttl: 0 };
   function showPickupToast(text) { pickupToast.text = text; pickupToast.ttl = 2800; }
 
+  // Screen-shake: trauma model. Add() bumps trauma; render() converts trauma^2
+  // into a random pixel offset. Decays each frame. Punches up bombs and big hits
+  // without wrecking aim.
+  let shakeTrauma = 0;
+  function addShake(amount) { shakeTrauma = Math.min(1, shakeTrauma + amount); }
+
   // --- Run lifecycle --------------------------------------------------------
   function startRun() {
     player = new Player(C.CANVAS_W / 2, C.CANVAS_H / 2);
@@ -117,13 +123,45 @@ const Game = (function () {
     if (boss && !boss.dead) boss.update(dt, currentRoom, player, projectiles, spawnEnemy);
 
     // 2b. Update bombs — fuse, explosion, blast resolution.
-    for (const b of bombs) {
+    //     Loop with index since chain detonations may queue new explosions
+    //     mid-iteration (chainIgnite shortens fuses, then they explode here).
+    for (let i = 0; i < bombs.length; i++) {
+      const b = bombs[i];
       const wasExploded = b.exploded;
       b.update(dt);
-      // Fire the blast the frame the bomb just exploded.
       if (!wasExploded && b.exploded) {
         applyBombBlast(b);
       }
+    }
+    // Keep bombs inside the room (they slide when kicked).
+    for (const b of bombs) {
+      if (b.exploded) continue;
+      if (b.x < currentRoom.left + b.r)   { b.x = currentRoom.left + b.r;   b.vx = 0; }
+      if (b.x > currentRoom.right - b.r)  { b.x = currentRoom.right - b.r;  b.vx = 0; }
+      if (b.y < currentRoom.top + b.r)    { b.y = currentRoom.top + b.r;    b.vy = 0; }
+      if (b.y > currentRoom.bottom - b.r) { b.y = currentRoom.bottom - b.r; b.vy = 0; }
+    }
+    // Player vs. bomb: a fresh bomb is non-solid until the player steps off.
+    // After that, contact kicks the bomb away (BoI-style punt) and the player
+    // can't walk through it.
+    for (const b of bombs) {
+      if (b.exploded) continue;
+      const dx = player.x - b.x, dy = player.y - b.y;
+      const min = player.r + b.r;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > min * min) {
+        if (!b.solid) b.solid = true;
+        continue;
+      }
+      if (!b.solid) continue; // pass through bombs we just dropped
+      const d = Math.sqrt(d2) || 0.0001;
+      const nx = dx / d, ny = dy / d;
+      // Shove bomb away, push player just outside contact.
+      const kick = 220;
+      b.vx -= nx * kick * dt * 8;
+      b.vy -= ny * kick * dt * 8;
+      player.x = b.x + nx * min;
+      player.y = b.y + ny * min;
     }
     bombs = bombs.filter(b => !b.dead);
 
@@ -173,14 +211,17 @@ const Game = (function () {
     }
 
     // 4. Collision: player bullets vs enemies / boss. Piercing bullets keep
-    //    going (won't hit the same target twice).
+    //    going (won't hit the same target twice). Each hit shoves the enemy
+    //    in the bullet's direction — chunky impact feel without numbers.
     for (const p of projectiles) {
       if (p.dead || p.side !== 'player') continue;
+      const bulletSpd = Math.hypot(p.vx, p.vy) || 1;
+      const knockScale = 110 / bulletSpd;
       for (const e of enemies) {
         if (e.dead) continue;
         if (p.alreadyHit.has(e)) continue;
         if (circlesHit(p, e)) {
-          e.takeDamage(p.damage);
+          e.takeDamage(p.damage, { x: p.vx * knockScale, y: p.vy * knockScale });
           spawnHitBurst(particles, p.x, p.y, '#fff7c2');
           if (p.onHit(e)) { p.dead = true; break; }
         }
@@ -199,6 +240,7 @@ const Game = (function () {
         if (player.takeDamage(p.damage)) {
           p.dead = true;
           spawnHitBurst(particles, p.x, p.y, '#ff7a6b');
+          addShake(0.35);
         }
       }
     }
@@ -286,10 +328,35 @@ const Game = (function () {
       currentRoom.pickups = pkSurv;
     }
 
-    // 8b. Resolve boss death — bigger splat, fatter gore.
+    // 8b. Resolve boss death — bigger splat, fatter gore, BoI-style rewards.
     if (boss && boss.dead && !boss._gored) {
       currentRoom.addBloodSplat(boss.x, boss.y, { big: true });
       spawnGoreBurst(particles, boss.x, boss.y, { big: true });
+      // Bosses always drop a free heart pickup, often a coin or two, and a
+      // random unseen item on a pedestal where they fell. Offset the pedestal
+      // slightly off-center so it doesn't fight the stairs for the spot.
+      if (!currentRoom.pickups) currentRoom.pickups = [];
+      currentRoom.pickups.push(new Pickup(boss.x - 36, boss.y + 30, 'heart'));
+      // 50% chance for a soul heart on top.
+      if (Math.random() < 0.5) {
+        currentRoom.pickups.push(new Pickup(boss.x + 36, boss.y + 30, 'soulheart'));
+      }
+      // Always sprinkle a couple of coins for flavor.
+      for (let i = 0; i < 3; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const d = 28 + Math.random() * 22;
+        currentRoom.pickups.push(new Pickup(boss.x + Math.cos(ang) * d, boss.y + Math.sin(ang) * d, 'coin'));
+      }
+      // Reward item pedestal — pick something the player hasn't seen this run.
+      const reward = pickRandomItem(player.items);
+      currentRoom.itemId = reward.id;
+      currentRoom.itemTaken = false;
+      // Sit the pedestal a bit above the center stairs so player walks
+      // through the reward on the way to descending.
+      const roomCx = (currentRoom.left + currentRoom.right) / 2;
+      const roomCy = (currentRoom.top + currentRoom.bottom) / 2;
+      currentRoom.itemPedestalX = roomCx;
+      currentRoom.itemPedestalY = roomCy - 70;
       boss._gored = true;
     }
 
@@ -309,10 +376,12 @@ const Game = (function () {
     // 11. Door traversal — walk into an open door to enter next room.
     handleDoors();
 
-    // 11.5 Treasure pickup: if the player walks onto the pedestal, apply the item.
-    if (currentRoom.kind === 'treasure' && !currentRoom.itemTaken && currentRoom.itemId) {
-      const cx = (currentRoom.left + currentRoom.right) / 2;
-      const cy = (currentRoom.top + currentRoom.bottom) / 2 - 14;
+    // 11.5 Item pickup: if the player walks onto a pedestal, apply the item.
+    //      Works for treasure rooms AND post-boss reward pedestals (any room
+    //      with itemId set). itemPedestalX/Y override the default room center.
+    if (!currentRoom.itemTaken && currentRoom.itemId) {
+      const cx = currentRoom.itemPedestalX ?? (currentRoom.left + currentRoom.right) / 2;
+      const cy = (currentRoom.itemPedestalY ?? (currentRoom.top + currentRoom.bottom) / 2) - 14;
       if (Math.hypot(player.x - cx, player.y - cy) < player.r + 14) {
         const item = findItemById(currentRoom.itemId);
         item.apply(player);
@@ -433,6 +502,13 @@ const Game = (function () {
     ctx.fillRect(0, 0, C.CANVAS_W, C.CANVAS_H);
 
     if (state === STATE.PLAYING || state === STATE.PAUSED) {
+      // Trauma^2 mapping gives big hits a satisfying punch while small hits
+      // stay subtle. Translate the world layer only; HUD stays locked.
+      const shakeMag = shakeTrauma * shakeTrauma * 14;
+      const shakeX = (Math.random() * 2 - 1) * shakeMag;
+      const shakeY = (Math.random() * 2 - 1) * shakeMag;
+      ctx.save();
+      ctx.translate(shakeX, shakeY);
       currentRoom.draw(ctx, currentRoom.kind === 'boss' && bossDefeated, getTheme(floorIdx));
       // Obstacles, pickups in floor layer (below characters).
       if (currentRoom.obstacles) for (const o of currentRoom.obstacles) o.draw(ctx);
@@ -443,6 +519,8 @@ const Game = (function () {
       for (const b of bombs) b.draw(ctx);
       for (const p of projectiles) p.draw(ctx);
       for (const pa of particles) pa.draw(ctx);
+      ctx.restore();
+
       UI.drawHUD(ctx, player, floorIdx, runTimeMs);
       UI.drawMinimap(ctx, floor, currentRoom);
       if (boss && !boss.dead) UI.drawBossBar(ctx, boss);
@@ -451,6 +529,11 @@ const Game = (function () {
         if (state === STATE.PLAYING) pickupToast.ttl -= 16; // approx ms/frame
       }
       if (state === STATE.PAUSED) UI.drawPause(ctx);
+
+      // Decay trauma toward 0 (only while actually playing).
+      if (state === STATE.PLAYING) {
+        shakeTrauma = Math.max(0, shakeTrauma - 0.04);
+      }
     } else if (state === STATE.TITLE) {
       UI.drawTitle(ctx, stats);
     } else if (state === STATE.GAME_OVER) {
@@ -509,31 +592,63 @@ const Game = (function () {
   }
 
   // Apply a bomb's blast: damage enemies/boss in radius, destroy obstacles,
-  // spawn smoke + ember particles, and shake the screen lightly.
+  // knock everything outward, chain-detonate nearby bombs, shake the screen.
+  // Collision uses (R + entity.r) so an enemy at the edge still gets clipped.
   function applyBombBlast(b) {
     const R = b.blastR;
-    const R2 = R * R;
+    // Returns 0..1 falloff from center: full power inside ~40% of R, then taper.
+    const falloff = (d, rTotal) => {
+      const inner = rTotal * 0.4;
+      if (d <= inner) return 1;
+      return Math.max(0, 1 - (d - inner) / (rTotal - inner));
+    };
+
     for (const e of enemies) {
       if (e.dead) continue;
       const dx = e.x - b.x, dy = e.y - b.y;
-      if (dx * dx + dy * dy <= R2) e.takeDamage(b.blastDamage);
+      const reach = R + e.r;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > reach * reach) continue;
+      const d = Math.sqrt(d2) || 0.0001;
+      const power = falloff(d, reach);
+      const knockMag = 360 * power;
+      e.takeDamage(b.blastDamage, { x: (dx / d) * knockMag, y: (dy / d) * knockMag });
     }
     if (boss && !boss.dead) {
       const dx = boss.x - b.x, dy = boss.y - b.y;
-      if (dx * dx + dy * dy <= (R + boss.r) * (R + boss.r)) boss.takeDamage(b.blastDamage);
+      const reach = R + boss.r;
+      if (dx * dx + dy * dy <= reach * reach) boss.takeDamage(b.blastDamage);
     }
     if (currentRoom.obstacles) {
       for (const o of currentRoom.obstacles) {
         const dx = o.x - b.x, dy = o.y - b.y;
-        if (dx * dx + dy * dy <= R2) o.destroyByBomb();
+        const reach = R + o.r;
+        if (dx * dx + dy * dy <= reach * reach) o.destroyByBomb();
       }
     }
-    // Player caught in their own blast — half damage, ignoring iframes is fine.
+    // Player caught in their own blast — 1 full heart, blown outward.
     {
       const dx = player.x - b.x, dy = player.y - b.y;
-      if (dx * dx + dy * dy <= R2) player.takeDamage(2);
+      const reach = R + player.r;
+      const d2 = dx * dx + dy * dy;
+      if (d2 <= reach * reach) {
+        const d = Math.sqrt(d2) || 0.0001;
+        if (player.takeDamage(2)) {
+          // takeDamage returned true => not in iframes => add knockback.
+          player.vx += (dx / d) * 320;
+          player.vy += (dy / d) * 320;
+        }
+      }
+    }
+    // Chain-detonate other bombs caught in this blast — next-frame fuse trim.
+    for (const other of bombs) {
+      if (other === b || other.exploded) continue;
+      const dx = other.x - b.x, dy = other.y - b.y;
+      const reach = R + other.r;
+      if (dx * dx + dy * dy <= reach * reach) other.chainIgnite();
     }
     spawnExplosionParticles(particles, b.x, b.y);
+    addShake(0.7);
   }
 
   // --- Loop ------------------------------------------------------------------

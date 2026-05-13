@@ -2,6 +2,33 @@
 
 Notes on what changed in this session, for picking up later.
 
+## Bombs + BoI-feel pass (2026-05-13)
+
+Goal: bombs that punch, screen that reacts, enemies that know they got hit.
+
+- **js/bombs.js** — Bombs are now physical objects. Slide with friction (`vx`,
+  `vy`), squash on placement, hard white/red strobe in the final 500ms of fuse,
+  three-layer plume on detonation. Added `chainIgnite()` for chain reactions.
+  Bumped radius (8→10) and blast (64→72) so they read on screen.
+- **js/game.js** —
+  - Screen shake (trauma model). Added on bomb explosions (0.7) and on player
+    damage (0.35). Decays ~2.4/sec. Translates world layer only; HUD locked.
+  - Pushable bombs: a freshly-placed bomb is non-solid until the player steps
+    off, then becomes solid and gets kicked when bumped. Constrained to room.
+  - `applyBombBlast` rewrite: uses `(R + entity.r)` so edge-of-blast targets
+    actually get hit (was missing them), applies outward knockback with
+    distance falloff, chain-detonates other bombs in radius, blows the player
+    away from their own bomb when caught.
+  - Player bullets now knock enemies in the bullet's direction.
+- **js/enemy.js** — `knockVx`/`knockVy` velocity field that decays each frame
+  (~exp(-9·dt)). `takeDamage(amount, knock)` accepts an optional `{x,y}` to
+  add to it. Walker behavior etc. still drives base position; knockback layers
+  on top so impacts read even when an enemy is locked to a behavior path.
+
+Known follow-ups:
+- Bullet/poop hits don't shake (intentional — only player damage + bombs).
+- Boss `takeDamage` ignores the knock arg (huge sprite, no knockback).
+
 ## Visual overhaul (BoI-inspired)
 
 Goal: apply `isaac_visual_style.md` and make the game fill the screen.
