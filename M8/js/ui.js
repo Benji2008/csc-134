@@ -263,6 +263,111 @@ const UI = {
     ctx.fillText(boss.name.toUpperCase(), C.CANVAS_W / 2, y - 12);
   },
 
+  // BoI-style character pick screen. Shows each character on a "platform" with
+  // their portrait, name, and starting kit. A/D or left/right to switch.
+  drawCharacterSelect(ctx, characters, selectedIdx) {
+    UI.dimBackdrop(ctx);
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 40px Courier New';
+    ctx.fillStyle = '#000';
+    ctx.fillText('CHOOSE YOUR FATE', C.CANVAS_W / 2 + 2, 82);
+    ctx.fillStyle = '#d8b890';
+    ctx.fillText('CHOOSE YOUR FATE', C.CANVAS_W / 2, 80);
+
+    const platformW = 220, platformH = 280;
+    const gap = 40;
+    const totalW = characters.length * platformW + (characters.length - 1) * gap;
+    const startX = (C.CANVAS_W - totalW) / 2;
+    const yTop = 140;
+
+    for (let i = 0; i < characters.length; i++) {
+      const ch = characters[i];
+      const px = startX + i * (platformW + gap);
+      const selected = i === selectedIdx;
+      // Platform plinth.
+      const pulse = selected ? 0.6 + 0.4 * Math.abs(Math.sin(performance.now() / 380)) : 0;
+      UI._roundedRect(ctx, px, yTop, platformW, platformH, 14);
+      ctx.fillStyle = selected ? `rgba(60, 30, 20, 0.85)` : 'rgba(20, 12, 16, 0.7)';
+      ctx.fill();
+      ctx.strokeStyle = selected ? `rgba(240, 200, 90, ${pulse})` : '#3a1a1a';
+      ctx.lineWidth = selected ? 3 : 2;
+      UI._roundedRect(ctx, px, yTop, platformW, platformH, 14);
+      ctx.stroke();
+
+      // Portrait — a big head with the character's palette, sitting on a stone.
+      const cx = px + platformW / 2;
+      const cy = yTop + 110;
+      const headR = 36;
+      // Stone podium.
+      ctx.fillStyle = '#1a1018';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + headR + 32, headR + 16, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#3a2a3a';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + headR + 26, headR + 12, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Body + feet using the existing helper.
+      drawCreatureBody(ctx, cx, cy, headR, {
+        bodyColor: ch.bodyColor, outline: ch.outline, footColor: ch.footColor,
+        moving: false, phase: 0, seed: i * 31,
+      });
+      // Head.
+      ctx.fillStyle = ch.bodyColor;
+      pathWobblyCircle(ctx, cx, cy, headR, i * 31);
+      ctx.fill();
+      ctx.strokeStyle = ch.outline;
+      ctx.lineWidth = 3;
+      pathWobblyCircle(ctx, cx, cy, headR, i * 31);
+      ctx.stroke();
+      // Big sad eyes.
+      const off = headR * 0.42;
+      for (const sign of [-1, 1]) {
+        ctx.fillStyle = '#f8eed8';
+        ctx.beginPath();
+        ctx.arc(cx + sign * off * 0.7, cy - off * 0.15, headR * 0.32, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = ch.outline;
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+        ctx.fillStyle = '#0a0508';
+        ctx.beginPath();
+        ctx.arc(cx + sign * off * 0.7, cy - off * 0.10, headR * 0.13, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Mouth.
+      ctx.strokeStyle = ch.mouthColor;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(cx - 5, cy + headR * 0.38);
+      ctx.lineTo(cx, cy + headR * 0.30);
+      ctx.lineTo(cx + 5, cy + headR * 0.38);
+      ctx.stroke();
+
+      // Name + blurb.
+      ctx.fillStyle = selected ? '#f0e0a0' : '#a8907a';
+      ctx.font = 'bold 24px Courier New';
+      ctx.fillText(ch.name, px + platformW / 2, yTop + 222);
+      ctx.fillStyle = selected ? '#d8b890' : '#7a6a5a';
+      ctx.font = 'italic 13px Courier New';
+      ctx.fillText(ch.blurb, px + platformW / 2, yTop + 244);
+
+      // Stat hints.
+      ctx.font = '12px Courier New';
+      ctx.fillStyle = '#a89070';
+      const hearts = Math.max(2, C.PLAYER_MAX_HP + (ch.hpDelta || 0)) / 2;
+      const dmg = C.PLAYER_BULLET_DAMAGE + (ch.damageDelta || 0);
+      const hint = `${hearts}♥  ·  ${dmg} dmg  ·  ${ch.startBombs}b ${ch.startKeys}k ${ch.startCoins}¢`;
+      ctx.fillText(hint, px + platformW / 2, yTop + 266);
+    }
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#6a5a72';
+    ctx.font = '14px Courier New';
+    ctx.fillText('A / D or ← → to switch  ·  SPACE to start  ·  ESC for title',
+                 C.CANVAS_W / 2, C.CANVAS_H - 50);
+  },
+
   drawTitle(ctx, stats) {
     UI.dimBackdrop(ctx);
     // Dripping bloody title.
@@ -312,7 +417,7 @@ const UI = {
     const pulse = 0.6 + 0.4 * Math.abs(Math.sin(performance.now() / 500));
     ctx.fillStyle = `rgba(240, 200, 90, ${pulse})`;
     ctx.font = 'bold 24px Courier New';
-    ctx.fillText('PRESS SPACE TO DESCEND', C.CANVAS_W / 2, 460);
+    ctx.fillText('PRESS SPACE TO BEGIN', C.CANVAS_W / 2, 460);
 
     ctx.fillStyle = '#6a5a72';
     ctx.font = '14px Courier New';

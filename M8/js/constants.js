@@ -61,6 +61,7 @@ const C = {
 // Game state constants — strings instead of magic numbers so logs are readable.
 const STATE = {
   TITLE: 'title',
+  CHARACTER_SELECT: 'charselect',
   PLAYING: 'playing',
   PAUSED: 'paused',
   GAME_OVER: 'gameover',

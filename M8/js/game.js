@@ -34,9 +34,19 @@ const Game = (function () {
   let shakeTrauma = 0;
   function addShake(amount) { shakeTrauma = Math.min(1, shakeTrauma + amount); }
 
+  // Hit pause: freeze the simulation for a few frames on impact. dt is forced
+  // to 0 while hitPauseMs > 0, which gives every solid hit a satisfying punch.
+  // Use max() so overlapping triggers don't stack — longest wins.
+  let hitPauseMs = 0;
+  function addHitPause(ms) { hitPauseMs = Math.max(hitPauseMs, ms); }
+
+  // Selected character — set by the character-select screen, consumed by startRun.
+  let selectedCharIdx = 0;
+
   // --- Run lifecycle --------------------------------------------------------
   function startRun() {
-    player = new Player(C.CANVAS_W / 2, C.CANVAS_H / 2);
+    const ch = CHARACTERS[selectedCharIdx] || CHARACTERS[0];
+    player = new Player(C.CANVAS_W / 2, C.CANVAS_H / 2, ch);
     floorIdx = 0;
     usedBosses = [];
     enterFloor(0);
@@ -229,6 +239,7 @@ const Game = (function () {
       if (!p.dead && boss && !boss.dead && !p.alreadyHit.has(boss) && circlesHit(p, boss)) {
         boss.takeDamage(p.damage);
         spawnHitBurst(particles, p.x, p.y, '#ffd87a');
+        addHitPause(20);
         if (p.onHit(boss)) p.dead = true;
       }
     }
@@ -241,6 +252,7 @@ const Game = (function () {
           p.dead = true;
           spawnHitBurst(particles, p.x, p.y, '#ff7a6b');
           addShake(0.35);
+          addHitPause(70);
         }
       }
     }
@@ -252,15 +264,21 @@ const Game = (function () {
     // 6. Contact damage from enemies / boss touching the player.
     for (const e of enemies) {
       if (e.dead) continue;
-      if (circlesHit(e, player)) player.takeDamage(e.contactDamage);
+      if (circlesHit(e, player)) {
+        if (player.takeDamage(e.contactDamage)) { addShake(0.35); addHitPause(60); }
+      }
     }
-    if (boss && !boss.dead && circlesHit(boss, player)) player.takeDamage(boss.contactDamage);
+    if (boss && !boss.dead && circlesHit(boss, player)) {
+      if (player.takeDamage(boss.contactDamage)) { addShake(0.45); addHitPause(80); }
+    }
 
     // 7. Hunter trail damage (and any future hazards). Skip if boss is dead so
     // lingering trail blobs don't keep hitting the player after the kill.
     if (boss && !boss.dead && boss.getHazards) {
       for (const h of boss.getHazards()) {
-        if (circlesHit(h, player)) player.takeDamage(h.damage);
+        if (circlesHit(h, player)) {
+          if (player.takeDamage(h.damage)) { addShake(0.30); addHitPause(50); }
+        }
       }
     }
 
@@ -268,6 +286,8 @@ const Game = (function () {
     const survivors = [];
     for (const e of enemies) {
       if (e.dead) {
+        // Tiny pause on each kill so they feel weighty.
+        addHitPause(30);
         // Leave a persistent splat + a chunky gore burst at the death spot.
         currentRoom.addBloodSplat(e.x, e.y);
         spawnGoreBurst(particles, e.x, e.y);
@@ -536,6 +556,8 @@ const Game = (function () {
       }
     } else if (state === STATE.TITLE) {
       UI.drawTitle(ctx, stats);
+    } else if (state === STATE.CHARACTER_SELECT) {
+      UI.drawCharacterSelect(ctx, CHARACTERS, selectedCharIdx);
     } else if (state === STATE.GAME_OVER) {
       UI.drawGameOver(ctx, stats, floorIdx);
     } else if (state === STATE.VICTORY) {
@@ -546,12 +568,22 @@ const Game = (function () {
   // --- State input handling --------------------------------------------------
   function handleStateInput() {
     if (state === STATE.TITLE) {
-      if (Input.wasPressed(' ')) startRun();
+      // SPACE goes to character select instead of straight into a run.
+      if (Input.wasPressed(' ')) state = STATE.CHARACTER_SELECT;
       // Wipe stats with Shift+R on the title screen — useful for testing.
       if (Input.isDown('shift') && Input.wasPressed('r')) {
         stats = Storage.fresh();
         Storage.save(stats);
       }
+    } else if (state === STATE.CHARACTER_SELECT) {
+      if (Input.wasPressed('a') || Input.wasPressed('arrowleft')) {
+        selectedCharIdx = (selectedCharIdx - 1 + CHARACTERS.length) % CHARACTERS.length;
+      }
+      if (Input.wasPressed('d') || Input.wasPressed('arrowright')) {
+        selectedCharIdx = (selectedCharIdx + 1) % CHARACTERS.length;
+      }
+      if (Input.wasPressed(' ')) startRun();
+      if (Input.wasPressed('escape')) state = STATE.TITLE;
     } else if (state === STATE.PLAYING) {
       if (Input.wasPressed('p')) state = STATE.PAUSED;
     } else if (state === STATE.PAUSED) {
@@ -649,6 +681,7 @@ const Game = (function () {
     }
     spawnExplosionParticles(particles, b.x, b.y);
     addShake(0.7);
+    addHitPause(110);
   }
 
   // --- Loop ------------------------------------------------------------------
@@ -660,7 +693,17 @@ const Game = (function () {
     lastT = now;
 
     handleStateInput();
-    if (state === STATE.PLAYING) update(dt);
+    if (state === STATE.PLAYING) {
+      // Hit pause: clamp the effective dt to 0 while the timer is running so
+      // the world freezes for a beat after big impacts. We still call update()
+      // (with effDt=0) so one-shot input like bomb placement is consumed.
+      let effDt = dt;
+      if (hitPauseMs > 0) {
+        hitPauseMs = Math.max(0, hitPauseMs - dt * 1000);
+        effDt = 0;
+      }
+      update(effDt);
+    }
     render();
 
     Input.endFrame();

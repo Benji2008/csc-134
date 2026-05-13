@@ -15,6 +15,7 @@ class Projectile {
     this.piercing = !!opts.piercing;
     this.homing   = !!opts.homing;
     this.bouncing = !!opts.bouncing;
+    this.charged  = !!opts.charged;
     this.bouncesLeft = this.bouncing ? 1 : 0;
     // For piercing — list of enemy/boss refs already hit so we don't hit twice.
     this.alreadyHit = new Set();
@@ -74,6 +75,29 @@ class Projectile {
   }
 
   draw(ctx) {
+    // Charged tears get a layered glow + sparkle so they read instantly as
+    // "the big one". Draw the outer flare first, then the core, then a shine.
+    if (this.charged) {
+      const t = performance.now() / 90;
+      const flicker = 1 + Math.sin(t) * 0.15;
+      ctx.fillStyle = 'rgba(255, 240, 140, 0.30)';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r * 1.9 * flicker, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 220, 90, 0.55)';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r * 1.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff7c2';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.beginPath();
+      ctx.arc(this.x - this.r * 0.35, this.y - this.r * 0.35, this.r * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
     ctx.fillStyle = this.side === 'player' ? C.COLOR_PLAYER_BULLET : C.COLOR_ENEMY_BULLET;
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
